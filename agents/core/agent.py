@@ -1,185 +1,195 @@
-from agents.core import settings
+from typing import List, Dict, Any, Optional
+from agents.core.config import settings
 from agents.utils.api_client import APIClient
 from groq import Groq
-import instructor
+from agents.tools.tools import (
+    GetCustomerByEmail,
+    GetCustomerByPhone,
+    UpdateReservationStatusTool,
+    GetAvailableRestaurantsTool,
+    GetRestaurantTableTool,
+    SearchRestaurantsTool,
+    CreateReservationTool,
+    CreateCustomerTool,
+    GetReservationStatus,
+)
+from pydantic import BaseModel, Field
+import json
+
+# Constants
+MAX_CONVERSATION_HISTORY = 10
+MAX_ITERATIONS = 5
+
+class Message(BaseModel):
+    role: str
+    content: str
 
 
 class RestaurantAgent:
     def __init__(self):
-        self.llm_client = instructor.from_groq(
-            Groq(api_key=settings.GROQ_API_KEY), mode=instructor.Mode.JSON)
+        self.llm_client = Groq(api_key=settings.GROQ_API_KEY)
         self.api_client = APIClient(base_url=settings.API_BASE_URL)
-        self.conversation_history = []
+        self.conversation_history: List[Message] = []
+        self.tools = self._initialize_tools()
 
-    
-    def _get_system_prompt(self):
-        return """
-        You are an AI reservation agent for FoodieSpot, a restaurant booking platform. Your responses should always be in JSON format following the structure below:
+    def _initialize_tools(self) -> List[Any]:
+        return [
+            SearchRestaurantsTool(self.api_client),
+            GetRestaurantTableTool(self.api_client),
+            GetCustomerByEmail(self.api_client),
+            GetCustomerByPhone(self.api_client),
+            CreateCustomerTool(self.api_client),
+            CreateReservationTool(self.api_client),
+            UpdateReservationStatusTool(self.api_client),
+            GetReservationStatus(self.api_client),
+        ]
 
-        ```json
-        {
-        "response_type": "string",  // greeting, question, confirmation, error, or information
-        "message": "string",        // your actual response to the user
-        "recommended_restaurants": [ // optional, include when providing recommendations
-            {
-            "name": "string",
-            "cuisine": "string",
-            "price_range": "string",
-            "location": "string",
-            "available_times": ["string"],
-            "special_features": ["string"]
-            }
-        ],
-        "required_information": [   // optional, list of missing info needed
-            "string"
-        ],
-        "booking_details": {        // optional, include for confirmations
-            "reference": "string",
-            "restaurant": "string",
-            "date": "string",
-            "time": "string",
-            "guests": number,
-            "special_requests": "string"
-        },
-        "is_final_response": boolean  // true if no more interaction needed, false if expecting user input
-        }
-        ```
+    def _get_system_prompt(self) -> str:
+        return f"""You are FoodieBot, an AI assistant for FoodieSpot restaurant booking service. Your job is to help customers find and book restaurants.
+            Response Guidelines:
+            Be Polite: Greet the customer warmly.
+            Ask Questions: Find out what kind of restaurant they want, where, when, and for how many people.
+            Use Tools: You have tools to help you. Use them when needed. Follow the examples *exactly*.
+            Confirm: Always confirm details with the customer.
+            End with a Friendly Closing: Thank the customer.
+            IMPORTANT:  You MUST respond with a JSON object when using a tool.  The JSON must be valid.
 
-        ## Core Capabilities
 
-        1. CUSTOMER IDENTIFICATION
-        - Search for existing customers by phone or email
-        - Create new customer profiles when needed
-        - Track customer preferences and history
+            Example Conversation Flow:
 
-        2. RESTAURANT SEARCH & RECOMMENDATIONS
-        Available search criteria:
-        - Cuisine types: North Indian, South Indian, Chinese, Italian, Thai, Japanese, etc.
-        - Price ranges: Budget, Moderate, Premium, Luxury
-        - Ambiance: Fine Dining, Casual, Family, Bistro
-        - Location/Area
-        - Special requirements: Event space, dietary options
-        - Seating capacity
-        - Current availability
+            Customer: "I'm looking for a good Italian restaurant."
 
-        3. RESERVATION MANAGEMENT
-        Handle all aspects of:
-        - New reservations
-        - Modifications
-        - Cancellations
-        - Status updates
-        - Special requests
+            FoodieBot: "Here are few italian restraurants:
+            1. Giordano's
+            2. Maggiano's"
 
-        ## Response Guidelines
+            Customer: "I want to book a table for 4 people at Girodana."
 
-        1. FORMAT RULES
-        - Always respond in valid JSON format
-        - Include all required fields
-        - Set is_final_response to true only when:
-        - Booking is confirmed
-        - Cancellation is completed
-        - Error cannot be resolved
-        - Information request is fulfilled
-        - Set is_final_response to false when:
-        - Awaiting user input
-        - Requiring additional information
-        - Offering options for selection
+            FoodieBot: "Great! . Let me check availability for tomorrow at 7pm. One moment please."
 
-        2. CUSTOMER INTERACTION
-        - Maintain professional, courteous tone
-        - Use complete sentences in the message field
-        - Confirm understanding of requests
-        - Handle special requests tactfully
+            FoodieBot: "I found a table for 4 at Giordano's. Would you like me to book it for you?"
 
-        3. ERROR HANDLING
-        Handle gracefully with appropriate JSON responses:
-        - No availability
-        - Invalid requests
-        - Missing information
-        - System constraints
+            Customer: "Yes, please."
 
-        ## Example Interactions
+            FoodieBot: "Can you please provide your email address/phone number and name for the reservation?"
 
-        FOR NEW BOOKING:
-        ```json
-        {
-        "response_type": "greeting",
-        "message": "Welcome to FoodieSpot! I can help you find and book the perfect restaurant. Are you looking to make a new reservation?",
-        "is_final_response": false
-        }
-        ```
+            Customer: "Yes sure, my email is aditya@email.com and name is Aditya."
 
-        CUSTOMER PROVIDES PARTIAL INFO:
-        ```json
-        {
-        "response_type": "question",
-        "message": "I'll help you find available restaurants. I just need a few more details to ensure the perfect match.",
-        "required_information": [
-            "preferred_time",
-            "cuisine_preference",
-            "location"
-        ],
-        "is_final_response": false
-        }
-        ```
+            FoodieBot: "Thank you, Aditya. I have successfully booked a table for 4 at Giordano's for tomorrow at 7pm. You will receive a confirmation email shortly. Is there anything else I can help you with?"
 
-        BOOKING CONFIRMATION:
-        ```json
-        {
-        "response_type": "confirmation",
-        "message": "Great news! I've confirmed your reservation.",
-        "booking_details": {
-            "reference": "FS123456",
-            "restaurant": "La Piazza",
-            "date": "2025-02-06",
-            "time": "19:00",
-            "guests": 4,
-            "special_requests": "Window table if possible"
-        },
-        "is_final_response": true
-        }
-        ```
+            Customer: "No, that's all. Thank you!"
 
-        ## API Integration Notes
-
-        1. Search & Recommendations
-        - Use /restaurants/search/ for filtered searches
-        - Use /restaurants/recommendations/ for personalized suggestions
-        - Use /restaurants/available/ to check real-time availability
-
-        2. Customer Management
-        - Validate customer existence before profile creation
-        - Update customer preferences based on interactions
-        - Track booking history for personalized recommendations
-
-        3. Reservation Handling
-        - Validate all parameters before confirming bookings
-        - Handle special requests through dedicated API endpoints
-        - Send confirmation details through preferred contact method
-
-        Remember to:
-        - Always maintain valid JSON structure
-        - Include appropriate response_type
-        - Set is_final_response correctly based on context
-        - Provide clear error messages when needed
-        - Include all relevant information in the response
+            FoodieBot: "You're welcome! Have a great day, Aditya. Goodbye!"
             """
 
+    def _update_conversation_history(self, role: str, content: str) -> None:
+        self.conversation_history.append(Message(role=role, content=content))
+        if len(self.conversation_history) > MAX_CONVERSATION_HISTORY:
+            self.conversation_history = self.conversation_history[-MAX_CONVERSATION_HISTORY:]
 
-    def process_request(self,user_input:str):
+    async def run(self, user_input: str) -> Dict[str, Any]:
         try:
-            if user_input:
-                self.conversation_history.append({"role": "user", "content": str(user_input)})
+            if not user_input.strip():
+                return {"error": "Empty input received"}
 
-            messages = [
-                {"role": "system", "content": self._get_system_prompt()},
-                *self.conversation_history
-            ]
+            self._update_conversation_history("user", user_input)
+            return await self._process_query()
 
-            
-            
         except Exception as e:
-            return {"error": str(e)}
-    
-    def close(self):
+            raise e
+            
+
+    async def _process_query(self) -> Dict[str, Any]:
+        messages = [
+            {"role": "system", "content": self._get_system_prompt()},
+            *[msg.model_dump() for msg in self.conversation_history]
+        ]
+
+        for _ in range(MAX_ITERATIONS):
+            response = self.llm_client.chat.completions.create(
+                model=settings.DEFAULT_MODEL, 
+                messages=messages,
+                max_tokens=4096,
+                tools=[tool.to_dict() for tool in self.tools], 
+                tool_choice="auto",
+            )
+            response_message = response.choices[0].message
+            tool_calls = response_message.tool_calls
+            print("Calling tool" if tool_calls else "Tool not needed", tool_calls)
+            if tool_calls:
+                messages.append({"role":"assistant","tool_calls":[
+                    {
+                        "id":tool_call.id,
+                        "function":{
+                            "name":tool_call.function.name,
+                            "arguments":tool_call.function.arguments
+                        },
+                        "type":tool_call.type
+                    }
+                    for tool_call in tool_calls
+                ]})
+
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_arguments = tool_call.function.arguments
+                    tool_result = await self._execute_tool(
+                        function_name, function_arguments
+                    )
+                    messages.append({
+                        "tool_call_id":tool_call.id,
+                        "role":"tool",
+                        "name":function_name,
+                        "content":str(tool_result)
+                    })
+            
+            else:
+                messages.append({"role": "assistant", "content": response_message.content})
+                self._update_conversation_history("assistant", response_message.content)
+                break
+
+        return {
+            "message": response_message.content,
+        }
+
+    async def _execute_tool(self, tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        tool = next((t for t in self.tools if t.name == tool_name), None)
+        if not tool:
+            return {"error": f"Tool {tool_name} not found"}
+        try:
+            params = json.loads(params)
+            return await tool.execute(**params)
+        except Exception as e:
+            return {"error": f"Tool execution failed: {str(e)}"}
+
+    def close(self) -> None:
         self.conversation_history.clear()
+
+async def test_agent_in_terminal():
+    """Terminal-based testing interface for the RestaurantAgent"""
+    agent = RestaurantAgent()
+    print("\nWelcome to FoodieSpot Restaurant Assistant!")
+    print("Type 'exit' to quit the conversation.\n")
+
+    try:
+        while True:
+            user_input = input("\nYou: ").strip()
+            
+            if user_input.lower() == 'exit':
+                print("\nGoodbye!")
+                break
+                
+            response = await agent.run(user_input)
+            
+            if "error" in response:
+                print(f"\nAssistant (Error): {response['error']}")
+            else:
+                print(f"\nAssistant: {response['message']}")
+                
+    except KeyboardInterrupt:
+        print("\n\nConversation terminated by user.")
+    finally:
+        agent.close()
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(test_agent_in_terminal())

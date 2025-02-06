@@ -82,7 +82,7 @@ class GetRestaurantTableTool(BaseTool):
     
     async def execute(self, **kwargs) -> Dict[str, Any]:
         try:
-            return await self.api_client.get(f"/restaurants/{kwargs['restaurant_id']}/tables")
+            return await self.api_client.get(f"/restaurants/{kwargs['restaurant_id']}/tables/")
         except Exception as e:
             return {"error": str(e)}
 
@@ -100,7 +100,7 @@ class SearchRestaurantsTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "cuisine_type": {"type": "string", "enum": ["NORTH_INDIAN", "SOUTH_INDIAN", "CHINESE", "ITALIAN", "JAPANESE"], "description": "Type of cuisine"},
+                "cuisine_type": {"type": "string", "enum": ["North Indian", "South Indian", "Chinese", "Italian", "Continental","Mughlai","Thai","Japanese","Mexican","Mediterranean","Bengali","Gujarati","Punjabi","Kerala","Hyderabadi"], "description": "Type of cuisine"},
                 "price_range": {"type": "string", "enum": ["$", "$$", "$$$", "$$$$"], "description": "Price category"},
                 "ambiance": {"type": "string", "enum": ["CASUAL", "FORMAL", "FAMILY", "ROMANTIC"], "description": "Restaurant atmosphere"},
                 "min_seating": {"type": "integer", "description": "Minimum seating capacity required"},
@@ -114,7 +114,7 @@ class SearchRestaurantsTool(BaseTool):
     
     def execute(self, **kwargs) -> Dict[str, Any]:
         try:
-            return self.api_client.get("/restaurants/search", params=kwargs)
+            return self.api_client.get("/restaurants/search/", params=kwargs)
         except Exception as e:
             return {"error": str(e)}
 

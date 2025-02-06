@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, Time, Date, Boolean, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, DECIMAL, Time, Date, Boolean, Enum, ForeignKey, ARRAY
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
@@ -13,6 +13,38 @@ class ReservationStatus(enum.Enum):
     CANCELLED = "Cancelled"
     PENDING = "Pending"
 
+class CuisineType(enum.Enum):
+    NORTH_INDIAN = "North Indian"
+    SOUTH_INDIAN = "South Indian"
+    CHINESE = "Chinese"
+    ITALIAN = "Italian"
+    CONTINENTAL = "Continental"
+    MUGHLAI = "Mughlai"
+    THAI = "Thai"
+    JAPANESE = "Japanese"
+    MEXICAN = "Mexican"
+    MEDITERRANEAN = "Mediterranean"
+    BENGALI = "Bengali"
+    GUJARATI = "Gujarati"
+    PUNJABI = "Punjabi"
+    KERALA = "Kerala"
+    HYDERABADI = "Hyderabadi"
+
+class PriceRange(enum.Enum):
+    BUDGET = "$"
+    MODERATE = "$$"
+    PREMIUM = "$$$"
+    LUXURY = "$$$$"
+
+class Ambiance(enum.Enum):
+    CASUAL = "Casual"
+    FINE_DINING = "Fine Dining"
+    FAMILY = "Family"
+    CAFE = "Cafe"
+    BISTRO = "Bistro"
+    LOUNGE = "Lounge"
+    OUTDOOR = "Outdoor"
+
 class Restaurant(Base):
     __tablename__ = "restaurants"
     restaurant_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -24,6 +56,15 @@ class Restaurant(Base):
     closing_time = Column(Time, nullable=False)
     seating_capacity = Column(Integer, nullable=False)
     special_event_space = Column(Boolean, default=False)
+    cuisine_type = Column(Enum(CuisineType, name='cuisine_type'), nullable=False)
+    price_range = Column(Enum(PriceRange, name='price_range'), nullable=False)
+    ambiance = Column(Enum(Ambiance, name='ambiance'), nullable=False)
+    average_rating = Column(DECIMAL(3,2), default=0.0)
+    features = Column(String(500), nullable=True)  
+    description = Column(String(1000), nullable=True)
+    specialties = Column(String(500), nullable=True)
+    dietary_options = Column(String(255), nullable=True)  
+    
     tables = relationship("Table", back_populates="restaurant")
 
 class Table(Base):

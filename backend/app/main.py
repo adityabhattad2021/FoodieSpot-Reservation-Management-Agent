@@ -1,7 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Set
 from datetime import date, time
 
 from . import models, schemas, crud
@@ -39,7 +39,22 @@ async def list_restaurants(skip: int = 0, limit: int = 100, db: Session = Depend
     """
     Retrieve a list of all restaurants with pagination support.
     """
-    return crud.get_restaurants(db, skip=skip, limit=limit)
+    try:
+        restaurants = crud.get_restaurants(db, skip=skip, limit=limit)
+        print(f"Found {len(restaurants)} restaurants")  # Debug log
+        if not restaurants:
+            # Return 404 if no restaurants are found
+            raise HTTPException(
+                status_code=404,
+                detail="No restaurants found in the database"
+            )
+        return restaurants
+    except Exception as e:
+        print(f"Error fetching restaurants: {str(e)}")  # Debug log
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching restaurants"
+        )
 
 @app.get("/restaurants/{restaurant_id}", response_model=schemas.RestaurantWithTables, tags=["Restaurants"])
 async def get_restaurant_detail(restaurant_id: int, db: Session = Depends(get_db)):
@@ -50,6 +65,92 @@ async def get_restaurant_detail(restaurant_id: int, db: Session = Depends(get_db
     if restaurant is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")
     return restaurant
+
+@app.get("/restaurants/search/", response_model=List[schemas.Restaurant], tags=["Restaurants"])
+async def search_restaurants(
+    cuisine_type: Optional[schemas.CuisineType] = None,
+    price_range: Optional[schemas.PriceRange] = None,
+    ambiance: Optional[schemas.Ambiance] = None,
+    min_seating: Optional[int] = None,
+    special_event_space: Optional[bool] = None,
+    dietary_options: Optional[str] = None,
+    area: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Search restaurants with multiple filters:
+    - cuisine_type: Type of cuisine (e.g., North Indian, Chinese)
+    - price_range: Price category ($, $$, $$$, $$$$)
+    - ambiance: Restaurant atmosphere
+    - min_seating: Minimum seating capacity required
+    - special_event_space: Whether special events can be hosted
+    - dietary_options: Specific dietary requirements
+    - area: Location/area of the restaurant
+    """
+    return crud.search_restaurants(
+        db=db,
+        cuisine_type=cuisine_type,
+        price_range=price_range,
+        ambiance=ambiance,
+        min_seating=min_seating,
+        special_event_space=special_event_space,
+        dietary_options=dietary_options,
+        area=area,
+        skip=skip,
+        limit=limit
+    )
+
+@app.get("/restaurants/available/", response_model=List[schemas.Restaurant], tags=["Restaurants"])
+async def get_available_restaurants(
+    reservation_date: date,
+    reservation_time: time,
+    party_size: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Get restaurants that have available tables for the specified date, time and party size.
+    """
+    return crud.get_available_restaurants(
+        db=db,
+        reservation_date=reservation_date,
+        reservation_time=reservation_time,
+        party_size=party_size,
+        skip=skip,
+        limit=limit
+    )
+
+@app.get("/restaurants/recommendations/", response_model=List[schemas.Restaurant], tags=["Restaurants"])
+async def get_restaurant_recommendations(
+    cuisine_preferences: Optional[Set[schemas.CuisineType]] = Query(None),
+    price_range: Optional[schemas.PriceRange] = None,
+    party_size: Optional[int] = None,
+    area: Optional[str] = None,
+    special_occasion: bool = False,
+    limit: int = 5,
+    db: Session = Depends(get_db)
+):
+    """
+    Get personalized restaurant recommendations based on:
+    - cuisine_preferences: List of preferred cuisine types
+    - price_range: Preferred price category
+    - party_size: Number of people
+    - area: Preferred location/area
+    - special_occasion: Whether it's a special occasion
+    - limit: Number of recommendations to return
+    """
+    return crud.get_restaurant_recommendations(
+        db=db,
+        cuisine_preferences=list(cuisine_preferences) if cuisine_preferences else None,
+        price_range=price_range,
+        party_size=party_size,
+        area=area,
+        special_occasion=special_occasion,
+        limit=limit
+    )
 
 # Table endpoints
 @app.post("/tables/", response_model=schemas.Table, tags=["Tables"])
@@ -189,16 +290,6 @@ async def update_reservation_status(
     Update the status of a reservation (Confirmed, Cancelled, or Pending).
     """
     reservation = crud.update_reservation_status(db, reservation_id=reservation_id, status=status)
-    if reservation is None:
-        raise HTTPException(status_code=404, detail="Reservation not found")
-    return reservation
-
-@app.post("/reservations/{reservation_id}/cancel/", response_model=schemas.Reservation, tags=["Reservations"])
-async def cancel_reservation(reservation_id: int, db: Session = Depends(get_db)):
-    """
-    Cancel a specific reservation.
-    """
-    reservation = crud.cancel_reservation(db, reservation_id=reservation_id)
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation

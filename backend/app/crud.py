@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from datetime import date, time
 from . import models, schemas
 from typing import List, Optional
@@ -20,6 +20,116 @@ def get_restaurants(db: Session, skip: int = 0, limit: int = 100):
 
 def get_restaurant_with_tables(db: Session, restaurant_id: int):
     return db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
+
+def search_restaurants(
+    db: Session,
+    cuisine_type: Optional[schemas.CuisineType] = None,
+    price_range: Optional[schemas.PriceRange] = None,
+    ambiance: Optional[schemas.Ambiance] = None,
+    min_seating: Optional[int] = None,
+    special_event_space: Optional[bool] = None,
+    dietary_options: Optional[str] = None,
+    area: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100
+) -> List[models.Restaurant]:
+
+    query = db.query(models.Restaurant)
+
+    
+    if cuisine_type:
+        query = query.filter(models.Restaurant.cuisine_type == cuisine_type)
+    
+    if price_range:
+        query = query.filter(models.Restaurant.price_range == price_range)
+    
+    if ambiance:
+        query = query.filter(models.Restaurant.ambiance == ambiance)
+    
+    if min_seating:
+        query = query.filter(models.Restaurant.seating_capacity >= min_seating)
+    
+    if special_event_space is not None:
+        query = query.filter(models.Restaurant.special_event_space == special_event_space)
+    
+    if dietary_options:
+        search_term = dietary_options.upper()
+        query = query.filter(models.Restaurant.dietary_options.ilike(f"%{search_term}%"))
+
+    if area:
+        query = query.filter(models.Restaurant.address.ilike(f"%{area}%"))
+    
+    return query.offset(skip).limit(limit).all()
+
+def get_available_restaurants(
+    db: Session,
+    reservation_date: date,
+    reservation_time: time,
+    party_size: int,
+    skip: int = 0,
+    limit: int = 100
+) -> List[models.Restaurant]:
+    """
+    Get restaurants that have available tables for given date, time and party size
+    """
+    restaurants = get_restaurants(db, skip=skip, limit=limit)
+    available_restaurants = []
+    
+    for restaurant in restaurants:
+        tables = get_restaurant_tables(db, restaurant.restaurant_id)
+
+        for table in tables:
+            table_available = (
+                table.seating_capacity >= party_size and 
+                table.status == schemas.TableStatus.AVAILABLE and
+                check_table_availability(db, table.table_id, reservation_date, reservation_time)
+            )
+
+            if table_available:
+                available_restaurants.append(restaurant)
+                break  
+    
+    return available_restaurants
+
+def get_restaurant_recommendations(
+    db: Session,
+    cuisine_preferences: Optional[List[schemas.CuisineType]] = None,
+    price_range: Optional[schemas.PriceRange] = None,
+    party_size: Optional[int] = None,
+    area: Optional[str] = None,
+    special_occasion: bool = False,
+    limit: int = 5
+) -> List[models.Restaurant]:
+    """
+    Get personalized restaurant recommendations based on preferences
+    """
+    query = db.query(models.Restaurant)
+    
+    if cuisine_preferences:
+        query = query.filter(models.Restaurant.cuisine_type.in_(cuisine_preferences))
+    
+    if price_range:
+        query = query.filter(models.Restaurant.price_range == price_range)
+    
+    if party_size:
+        query = query.filter(models.Restaurant.seating_capacity >= party_size)
+    
+    if area:
+        query = query.filter(models.Restaurant.address.ilike(f"%{area}%"))
+    
+    if special_occasion:
+        query = query.filter(or_(
+            models.Restaurant.special_event_space == True,
+            models.Restaurant.ambiance.in_([
+                schemas.Ambiance.FINE_DINING,
+                schemas.Ambiance.LOUNGE
+            ])
+        ))
+    
+    # Order by rating for better recommendations
+    query = query.order_by(models.Restaurant.average_rating.desc())
+    
+    return query.limit(limit).all()
 
 # Table CRUD operations
 def create_table(db: Session, table: schemas.TableCreate):
@@ -67,14 +177,14 @@ def get_customers(db: Session, skip: int = 0, limit: int = 100):
 # Reservation CRUD operations
 def create_reservation(db: Session, reservation: schemas.ReservationCreate):
     # First check if table is available
-    existing_reservations = check_table_availability(
+    is_available = check_table_availability(
         db,
         reservation.table_id,
         reservation.reservation_date,
         reservation.reservation_time
     )
     
-    if existing_reservations:
+    if not is_available:
         raise ValueError("Table is already reserved for this time slot")
     
     db_reservation = models.Reservation(**reservation.model_dump())
@@ -117,14 +227,14 @@ def update_reservation_status(db: Session, reservation_id: int, status: schemas.
     return db_reservation
 
 def check_table_availability(db: Session, table_id: int, date: date, time: time):
-    return db.query(models.Reservation).filter(
+    result = db.query(models.Reservation).filter(
         and_(
             models.Reservation.table_id == table_id,
             models.Reservation.reservation_date == date,
             models.Reservation.reservation_time == time,
-            models.Reservation.status != schemas.ReservationStatus.CANCELLED
         )
     ).first()
+    return result == None
 
 def cancel_reservation(db: Session, reservation_id: int):
     return update_reservation_status(db, reservation_id, schemas.ReservationStatus.CANCELLED)

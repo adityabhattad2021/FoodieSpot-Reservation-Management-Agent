@@ -1,17 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, time, date
 from typing import Optional, List
-from enum import Enum
-
-class TableStatus(str, Enum):
-    AVAILABLE = "Available"
-    RESERVED = "Reserved"
-    MAINTENANCE = "Maintenance"
-
-class ReservationStatus(str, Enum):
-    CONFIRMED = "Confirmed"
-    CANCELLED = "Cancelled"
-    PENDING = "Pending"
+from .models import TableStatus, ReservationStatus, CuisineType, PriceRange, Ambiance
 
 class RestaurantBase(BaseModel):
     name: str
@@ -22,10 +12,17 @@ class RestaurantBase(BaseModel):
     closing_time: time
     seating_capacity: int
     special_event_space: bool = False
+    cuisine_type: CuisineType
+    price_range: PriceRange
+    ambiance: Ambiance
+    features: Optional[str] = None
+    description: Optional[str] = None
+    specialties: Optional[str] = None
+    dietary_options: Optional[str] = None
+    average_rating: Optional[float] = 0.0
 
 class RestaurantCreate(RestaurantBase):
     pass
-    
 
 class Restaurant(RestaurantBase):
     restaurant_id: int

@@ -1,10 +1,11 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from abc import ABC, abstractmethod
 from ..utils.api_client import APIClient
+from ...config import settings
 
 class BaseTool(ABC):
-    def __init__(self, api_client: APIClient):
-        self.api_client = api_client
+    def __init__(self):
+        self.api_client = APIClient(base_url=settings.API_BASE_URL)
     
     @property
     @abstractmethod

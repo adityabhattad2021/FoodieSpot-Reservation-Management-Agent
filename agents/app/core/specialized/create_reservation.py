@@ -1,11 +1,11 @@
-from agents.core.base_agent import BaseAgent
-from agents.tools.tools import CreateReservationTool
+from ..base_agent import BaseAgent
+from ..tools.reservation_management import CreateReservationTool
 from typing import List, Any
 
 
 class CreateReservationAgent(BaseAgent):
     def _initialize_tools(self) -> List[Any]:
-        return [CreateReservationTool(self.api_client)]
+        return [CreateReservationTool()]
     
 
     def _get_system_prompt(self):

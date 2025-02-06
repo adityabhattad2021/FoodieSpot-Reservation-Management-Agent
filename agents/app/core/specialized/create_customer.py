@@ -1,11 +1,10 @@
-from agents.core.base_agent import BaseAgent
-from agents.tools.tools import CreateCustomerTool
-from typing import List, Any
+from ..base_agent import BaseAgent
+from ..tools.customer_managment import CreateCustomerTool
 
 
 class CreateCustomerAgent(BaseAgent):
     def _initialize_tools(self):
-        return [CreateCustomerTool(self.api_client)]
+        return [CreateCustomerTool()]
     
     def _get_system_prompt(self):
         return """

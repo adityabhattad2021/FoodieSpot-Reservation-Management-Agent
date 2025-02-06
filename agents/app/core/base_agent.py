@@ -1,10 +1,10 @@
-from typing import List, Dict, Any
-from agents.core.config import settings
-from agents.utils.api_client import APIClient
+import json
 from groq import Groq
+from typing import List, Dict, Any
 from pydantic import BaseModel
 from abc import ABC, abstractmethod
-import json
+
+from ..config import settings
 
 MAX_ITERATIONS = 2
 
@@ -15,7 +15,6 @@ class Message(BaseModel):
 class BaseAgent(ABC):
     def __init__(self):
         self.llm_client = Groq(api_key=settings.GROQ_API_KEY)
-        self.api_client = APIClient(base_url=settings.API_BASE_URL)
         self.conversation_history: List[Message] = []
         self.tools = self._initialize_tools()
 
@@ -76,7 +75,6 @@ class BaseAgent(ABC):
                 messages.append({"role":"assistant","content":response_message.content})
                 break
 
-        print(response_message.content,"I was called****************************8")
         return {
             "message": response_message.content,
         }

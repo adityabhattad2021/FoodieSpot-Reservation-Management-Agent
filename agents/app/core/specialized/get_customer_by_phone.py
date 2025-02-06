@@ -1,11 +1,11 @@
-from agents.core.base_agent import BaseAgent
-from agents.tools.tools import GetCustomerByPhone
+from ..base_agent import BaseAgent
+from ..tools.customer_managment import GetCustomerByPhone
 from typing import List, Any
 
 
 class GetCustomerByPhoneAgent(BaseAgent):
     def _initialize_tools(self) -> List[Any]:
-        return [GetCustomerByPhone(self.api_client)]
+        return [GetCustomerByPhone()]
     
     def _get_system_prompt(self) -> str:
         return """

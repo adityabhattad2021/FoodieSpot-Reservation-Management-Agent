@@ -1,10 +1,9 @@
-from typing import Dict, Any
-from agents.core.base_agent import BaseAgent
-from agents.tools.tools import GetRestaurantTableTool
+from ..base_agent import BaseAgent
+from ..tools.restaurant_management import GetRestaurantTableTool
 
 class GetRestraurantTablesAgent(BaseAgent):
     def _initialize_tools(self):
-        return [GetRestaurantTableTool(self.api_client)]
+        return [GetRestaurantTableTool()]
     
     def _get_system_prompt(self):
         return """You are the FoodieBot Table Specialist. Your ONLY job is to help customers find tables at restaurants.

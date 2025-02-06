@@ -1,26 +1,26 @@
 import logging
 import json
-
+import datetime
 from groq import Groq
 from pydantic import BaseModel
 from typing import List, Dict, Any
-from agents.core.config import settings
-from agents.core.specialized.search_agent import SearchAgent
-from agents.core.specialized.create_custome import CreateCustomerAgent
-from agents.core.specialized.get_customer_by_email import GetCustomerByEmailAgent
-from agents.core.specialized.get_customer_by_phone import GetCustomerByPhoneAgent
-from agents.core.specialized.get_restraurant_table import GetRestraurantTablesAgent
-from agents.core.specialized.create_reservation import CreateReservationAgent
+
+
+from ..config import settings
+from .specialized.search_agent import SearchAgent
+from .specialized.create_customer import CreateCustomerAgent
+from .specialized.get_customer_by_email import GetCustomerByEmailAgent
+from .specialized.get_customer_by_phone import GetCustomerByPhoneAgent
+from .specialized.get_restraurant_table import GetRestraurantTablesAgent
+from .specialized.create_reservation import CreateReservationAgent
 
 MAX_CONVERSATION_HISTORY = 10
 MAX_ITERATIONS = 2
 
 logging.basicConfig(
-    level=logging.WARNING,  # Set the desired log level
+    level=logging.WARNING, 
     format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
-
 )
-
 
 class Message(BaseModel):
     role: str
@@ -51,7 +51,7 @@ class AgentTool:
             }
         }
 
-class Router:
+class RouterAgent:
     def __init__(self):
         self.llm_client = Groq(api_key=settings.GROQ_API_KEY)
         self.tools = self._initialize_agent_tools()
@@ -71,7 +71,9 @@ class Router:
         return tools
 
     def _get_system_prompt(self) -> str:
-        return """
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return f"""
+        Current time: {current_time}
         You are FoodieBot. Your job is to understand what the user wants and use the *best* tool to help with restaurants. If it's not about restaurants, tell them what you can do.
 
         **TOOLS:**

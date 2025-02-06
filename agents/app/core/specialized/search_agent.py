@@ -1,10 +1,10 @@
-from agents.core.base_agent import BaseAgent
-from agents.tools.tools import SearchRestaurantsTool
+from ..base_agent import BaseAgent
+from ..tools.restaurant_management import SearchRestaurantsTool
 from typing import List, Any
 
 class SearchAgent(BaseAgent):
     def _initialize_tools(self) -> List[Any]:
-        return [SearchRestaurantsTool(self.api_client)]
+        return [SearchRestaurantsTool()]
     
     def _get_system_prompt(self) -> str:
         return """You are the FoodieBot Search Specialist. Your ONLY job is to help customers find restaurants.

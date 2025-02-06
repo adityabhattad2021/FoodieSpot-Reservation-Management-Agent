@@ -106,7 +106,6 @@ class SearchRestaurantsTool(BaseTool):
                 "min_seating": {"type": "integer", "description": "Minimum seating capacity required"},
                 "special_event_space": {"type": "boolean", "description": "Whether special events can be hosted"},
                 "dietary_options": {"type": "string", "description": "Specific dietary requirements"},
-                "area": {"type": "string", "description": "Location/area of the restaurant"},
                 "skip": {"type": "integer", "default": 0},
                 "limit": {"type": "integer", "default": 100}
             }

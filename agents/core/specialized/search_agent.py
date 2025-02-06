@@ -14,10 +14,10 @@ class SearchAgent(BaseAgent):
         {
             "cuisine_type": ["North Indian", "South Indian", "Chinese", "Italian"...],
             "price_range": ["$", "$$", "$$$", "$$$$"],
-            "ambiance": ["CASUAL", "FORMAL", "FAMILY", "ROMANTIC"],
             "dietary_options": "dietary requirements"
         }
 
+        Only call the tool with correct parameters and values. Do not make up any information or parameter.
 
         RESPONSE FORMAT:
         1. When tool returns success:
@@ -28,6 +28,7 @@ class SearchAgent(BaseAgent):
         2. When tool returns error:
            - Apologize and explain the issue
            - Suggest modifying search criteria
+           - Try again with correct values
 
         EXAMPLE CONVERSATION:
 
@@ -38,17 +39,16 @@ class SearchAgent(BaseAgent):
         {
             "cuisine_type": "Italian",
             "ambiance": "ROMANTIC",
-            "area": "downtown"
         }*
 
         Tool Response: {
             "restaurants": [
-                {"name": "La Luna", "price_range": "$$$", "area": "downtown"}
+                {"name": "La Luna", "price_range": "$$$", restaurant_id: "1234"},
             ]
         }
 
         Assistant: I found 1 romantic Italian restaurant in downtown:
-        1. La Luna ($$$)
+        1. La Luna ($$$) Restraurant ID: 1234
            - Romantic ambiance
            - Located in downtown
            - ...other details
@@ -58,11 +58,9 @@ class SearchAgent(BaseAgent):
         IMPORTANT RULES:
         - ONLY use the search_restaurants tool
         - NEVER make up restaurant information
+        - ALWAYS include restaurant id in your response
         - ALWAYS verify tool response before replying
         - If no matches, suggest broadening the search"""
     
-    # async def process_query(self, query: str):
-    #     print(f"SearchAgent.process_query called with query: {query}")  # Debugging
-    #     return {"result": f"Found results for '{query}', patiyala dhaba, bengaluru"}
 
 

@@ -34,7 +34,7 @@ class BaseAgent(ABC):
             {"role": "system", "content": self._get_system_prompt()},
             {"role": "user", "content": query}
         ]
-        
+
         for _ in range(MAX_ITERATIONS):
             response = self.llm_client.chat.completions.create(
                 model=settings.DEFAULT_MODEL,
@@ -76,6 +76,7 @@ class BaseAgent(ABC):
                 messages.append({"role":"assistant","content":response_message.content})
                 break
 
+        print(response_message.content,"I was called****************************8")
         return {
             "message": response_message.content,
         }

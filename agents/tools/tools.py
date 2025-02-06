@@ -64,7 +64,7 @@ class ListRestaurantsTool(BaseTool):
 class GetRestaurantTableTool(BaseTool):
     @property
     def name(self) -> str:
-        return "get_restaurant_detail"
+        return "get_restaurant_table"
     
     @property
     def description(self) -> str:
@@ -102,7 +102,7 @@ class SearchRestaurantsTool(BaseTool):
             "properties": {
                 "cuisine_type": {"type": "string", "enum": ["North Indian", "South Indian", "Chinese", "Italian", "Continental","Mughlai","Thai","Japanese","Mexican","Mediterranean","Bengali","Gujarati","Punjabi","Kerala","Hyderabadi"], "description": "Type of cuisine"},
                 "price_range": {"type": "string", "enum": ["$", "$$", "$$$", "$$$$"], "description": "Price category"},
-                "ambiance": {"type": "string", "enum": ["CASUAL", "FORMAL", "FAMILY", "ROMANTIC"], "description": "Restaurant atmosphere"},
+                "ambiance": {"type": "string", "enum": ["Casual", "Fine Outdoor", "Family", "Lounge"], "description": "Restaurant atmosphere"},
                 "min_seating": {"type": "integer", "description": "Minimum seating capacity required"},
                 "special_event_space": {"type": "boolean", "description": "Whether special events can be hosted"},
                 "dietary_options": {"type": "string", "description": "Specific dietary requirements"},
@@ -242,7 +242,7 @@ class GetCustomerByEmail(BaseTool):
     
     async def execute(self, **kwargs) -> Dict[str, Any]:
         try:
-            return await self.api_client.get("/customers/", params=kwargs)
+            return await self.api_client.get("/customers/email/", params=kwargs)
         except Exception as e:
             return {"error": str(e)}
 

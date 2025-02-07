@@ -1,5 +1,4 @@
 from app.database import engine, Base
-from app.models import Restaurant, Table, Customer, Reservation
 from app.seed import seed_data
 
 def init_database():

@@ -170,8 +170,8 @@ def get_customer_by_email(db: Session, email: str):
 def get_customer_by_phone(db: Session, phone: str):
     return db.query(models.Customer).filter(models.Customer.phone == phone).first()
 
-def get_customers(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Customer).offset(skip).limit(limit).all()
+def get_customers(db: Session):
+    return db.query(models.Customer).all()
 
 
 # Reservation CRUD operations
@@ -196,6 +196,9 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate):
     db.commit()
     db.refresh(db_reservation)
     return db_reservation
+
+def get_reservations(db: Session):
+    return db.query(models.Reservation).all()
 
 def get_reservation(db: Session, reservation_id: int):
     return db.query(models.Reservation).filter(

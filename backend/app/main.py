@@ -3,12 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional, List, Set
 from datetime import date, time
+from .auth import add_auth_routes, get_auth
 
-from . import models, schemas, crud
-from .database import SessionLocal, engine
+from . import schemas, crud
 from .dependencies import get_db
 
-app = FastAPI(title="FoodieSpot API")
+app = FastAPI(
+    title="FoodieSpot API",
+    description="API for restaurant management system",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,9 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+add_auth_routes(app)
+
 # Restaurant endpoints
 @app.post("/restaurants/", response_model=schemas.Restaurant, tags=["Restaurants"])
-async def create_restaurant(restaurant: schemas.RestaurantCreate, db: Session = Depends(get_db)):
+async def create_restaurant(restaurant: schemas.RestaurantCreate, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Create a new restaurant with the following information:
     - name: Restaurant name
@@ -35,7 +41,7 @@ async def create_restaurant(restaurant: schemas.RestaurantCreate, db: Session = 
     return crud.create_restaurant(db=db, restaurant=restaurant)
 
 @app.get("/restaurants/", response_model=List[schemas.Restaurant], tags=["Restaurants"])
-async def list_restaurants(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def list_restaurants(skip: int = 0, limit: int = 100, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Retrieve a list of all restaurants with pagination support.
     """
@@ -57,7 +63,7 @@ async def list_restaurants(skip: int = 0, limit: int = 100, db: Session = Depend
         )
 
 @app.get("/restaurants/{restaurant_id}", response_model=schemas.RestaurantWithTables, tags=["Restaurants"])
-async def get_restaurant_detail(restaurant_id: int, db: Session = Depends(get_db)):
+async def get_restaurant_detail(restaurant_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Get detailed information about a specific restaurant, including its tables.
     """
@@ -77,7 +83,8 @@ async def search_restaurants(
     area: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: str = Depends(get_auth)
 ):
     """
     Search restaurants with multiple filters:
@@ -109,7 +116,8 @@ async def get_available_restaurants(
     party_size: int,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: str = Depends(get_auth)
 ):
     """
     Get restaurants that have available tables for the specified date, time and party size.
@@ -131,7 +139,8 @@ async def get_restaurant_recommendations(
     area: Optional[str] = None,
     special_occasion: bool = False,
     limit: int = 5,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: str = Depends(get_auth)
 ):
     """
     Get personalized restaurant recommendations based on:
@@ -154,7 +163,7 @@ async def get_restaurant_recommendations(
 
 # Table endpoints
 @app.post("/tables/", response_model=schemas.Table, tags=["Tables"])
-async def create_table(table: schemas.TableCreate, db: Session = Depends(get_db)):
+async def create_table(table: schemas.TableCreate, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Create a new table in a restaurant with the following details:
     - restaurant_id: ID of the restaurant
@@ -166,14 +175,14 @@ async def create_table(table: schemas.TableCreate, db: Session = Depends(get_db)
     return crud.create_table(db=db, table=table)
 
 @app.get("/restaurants/{restaurant_id}/tables/", response_model=List[schemas.Table], tags=["Tables"])
-async def get_restaurant_tables(restaurant_id: int, db: Session = Depends(get_db)):
+async def get_restaurant_tables(restaurant_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Get all tables for a specific restaurant.
     """
     return crud.get_restaurant_tables(db, restaurant_id=restaurant_id)
 
 @app.put("/tables/{table_id}/status/", response_model=schemas.Table, tags=["Tables"])
-async def update_table_status(table_id: int, status: schemas.TableStatus, db: Session = Depends(get_db)):
+async def update_table_status(table_id: int, status: schemas.TableStatus, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Update the status of a specific table (Available, Reserved, or Maintenance).
     """
@@ -184,7 +193,7 @@ async def update_table_status(table_id: int, status: schemas.TableStatus, db: Se
 
 # Customer endpoints
 @app.post("/customers/", response_model=schemas.Customer, tags=["Customers"])
-async def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
+async def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Register a new customer with the following information:
     - name: Customer's full name
@@ -194,7 +203,7 @@ async def create_customer(customer: schemas.CustomerCreate, db: Session = Depend
     return crud.create_customer(db=db, customer=customer)
 
 @app.get("/customers/{customer_id}", response_model=schemas.Customer, tags=["Customers"])
-async def get_customer(customer_id: int, db: Session = Depends(get_db)):
+async def get_customer(customer_id: int, db: Session = Depends(get_db),auth:str = Depends(get_auth)):
     """
     Retrieve customer information by ID.
     """
@@ -204,7 +213,7 @@ async def get_customer(customer_id: int, db: Session = Depends(get_db)):
     return customer
 
 @app.get("/customers/phone/{phone}", response_model=schemas.Customer, tags=["Customers"])
-async def get_customer_by_phone(phone: str, db: Session = Depends(get_db)):
+async def get_customer_by_phone(phone: str, db: Session = Depends(get_db),auth:str = Depends(get_auth)):
     """
     Retrieve customer information by phone number.
     """
@@ -214,7 +223,7 @@ async def get_customer_by_phone(phone: str, db: Session = Depends(get_db)):
     return customer
 
 @app.get("/customers/email/{email}", response_model=schemas.Customer, tags=["Customers"])
-async def get_customer_by_email(email: str, db: Session = Depends(get_db)):
+async def get_customer_by_email(email: str, db: Session = Depends(get_db),auth:str = Depends(get_auth)):
     """
     Retrieve customer information by email address.
     """
@@ -223,19 +232,17 @@ async def get_customer_by_email(email: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
 
-
 @app.get("/customers/", response_model=List[schemas.Customer], tags=["Customers"])
-async def list_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def list_customers(db: Session = Depends(get_db),auth:str = Depends(get_auth)):
     """
     Retrieve a list of all customers with pagination support.
     """
-    return crud.get_customers(db, skip=skip, limit=limit)
-
+    return crud.get_customers(db)
 
 
 # Reservation endpoints
 @app.post("/reservations/", response_model=schemas.Reservation, tags=["Reservations"])
-async def create_reservation(reservation: schemas.ReservationCreate, db: Session = Depends(get_db)):
+async def create_reservation(reservation: schemas.ReservationCreate, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Create a new reservation with the following details:
     - customer_id: ID of the customer making the reservation
@@ -251,9 +258,16 @@ async def create_reservation(reservation: schemas.ReservationCreate, db: Session
         return crud.create_reservation(db=db, reservation=reservation)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/reservations/', response_model=List[schemas.Reservation], tags=["Reservations"])
+async def get_reservations(db: Session = Depends(get_db),auth: str = Depends(get_auth)):
+    """
+    Retrieve a list of all reservations with pagination support.
+    """
+    return crud.get_reservations(db)
 
 @app.get("/reservations/{reservation_id}", response_model=schemas.ReservationResponse, tags=["Reservations"])
-async def get_reservation(reservation_id: int, db: Session = Depends(get_db)):
+async def get_reservation(reservation_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Get detailed information about a specific reservation.
     """
@@ -263,7 +277,7 @@ async def get_reservation(reservation_id: int, db: Session = Depends(get_db)):
     return reservation
 
 @app.get("/customers/{customer_id}/reservations/", response_model=List[schemas.Reservation], tags=["Reservations"])
-async def get_customer_reservations(customer_id: int, db: Session = Depends(get_db)):
+async def get_customer_reservations(customer_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """
     Get all reservations for a specific customer.
     """
@@ -273,7 +287,8 @@ async def get_customer_reservations(customer_id: int, db: Session = Depends(get_
 async def get_restaurant_reservations(
     restaurant_id: int, 
     date: Optional[date] = None, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: str = Depends(get_auth)
 ):
     """
     Get all reservations for a specific restaurant, optionally filtered by date.
@@ -284,7 +299,8 @@ async def get_restaurant_reservations(
 async def update_reservation_status(
     reservation_id: int, 
     status: schemas.ReservationStatus, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: str = Depends(get_auth)
 ):
     """
     Update the status of a reservation (Confirmed, Cancelled, or Pending).

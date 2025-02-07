@@ -60,6 +60,22 @@ class Customer(CustomerBase):
     class Config:
         from_attributes = True
 
+class SupportTicketBase(BaseModel):
+    customer_id: int
+    ticket_date: date
+    ticket_time: time
+    ticket_description: str
+    status: bool
+
+class SupportTicketCreate(SupportTicketBase):
+    pass
+
+class SupportTicket(SupportTicketBase):
+    ticket_id: int
+
+    class Config:
+        from_attributes = True
+
 class ReservationBase(BaseModel):
     customer_id: int
     restaurant_id: int

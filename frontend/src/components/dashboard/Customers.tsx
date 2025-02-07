@@ -1,15 +1,27 @@
+import { useEffect, useState } from "react";
+import { api } from "../../context/AuthContext";
 
-export function Customers() {
-  const customers = [
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+1 234 567 8900',
-      reservations: 5,
-      lastVisit: '2024-02-15'
-    }
-  ];
+interface Customer{
+  customer_id: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export function CustomersTab() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  useEffect(()=>{
+    const fetchCustomers = async () => {
+      try {
+        const response = await api.get('/customers/');
+        setCustomers(response.data);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+      }
+    };
+    fetchCustomers();
+  },[])
 
   return (
     <div>
@@ -22,18 +34,14 @@ export function Customers() {
                 <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Name</th>
                 <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
                 <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Phone</th>
-                <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Reservations</th>
-                <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Last Visit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {customers.map((customer) => (
-                <tr key={customer.id}>
+                <tr key={customer.customer_id}>
                   <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900">{customer.name}</td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{customer.email}</td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{customer.phone}</td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{customer.reservations}</td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{customer.lastVisit}</td>
                 </tr>
               ))}
             </tbody>

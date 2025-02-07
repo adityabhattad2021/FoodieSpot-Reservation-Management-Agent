@@ -1,90 +1,53 @@
-import React from 'react';
-import { MessageSquare, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
+import { api } from '../../context/AuthContext';
+import { useEffect, useState } from 'react';
 
-type TicketStatus = 'open' | 'closed' | 'pending';
-
-interface Ticket {
-  id: number;
-  customer: string;
-  subject: string;
-  message: string;
-  status: TicketStatus;
-  priority: 'low' | 'medium' | 'high';
-  createdAt: string;
-  lastUpdated: string;
+interface SupportTicket {
+  ticket_id: number;
+  customer_id: number;
+  ticket_date: string; // ISO date string format (YYYY-MM-DD)
+  ticket_time: string; // ISO time string format (HH:MM:SS)
+  ticket_description: string;
+  status: boolean; // false = Open, true = Closed
 }
 
-const tickets: Ticket[] = [
-  {
-    id: 1,
-    customer: "John Doe",
-    subject: "Reservation Modification Request",
-    message: "I need to change my reservation time from 7 PM to 8 PM tomorrow.",
-    status: "open",
-    priority: "medium",
-    createdAt: "2024-02-28T14:30:00",
-    lastUpdated: "2024-02-28T14:30:00"
-  },
-  {
-    id: 2,
-    customer: "Alice Smith",
-    subject: "Special Dietary Requirements",
-    message: "I have severe nut allergies. Can you confirm if the kitchen can accommodate this?",
-    status: "pending",
-    priority: "high",
-    createdAt: "2024-02-28T12:15:00",
-    lastUpdated: "2024-02-28T13:20:00"
-  },
-  {
-    id: 3,
-    customer: "Bob Wilson",
-    subject: "Birthday Party Arrangement",
-    message: "Looking to arrange a surprise birthday party for 15 people.",
-    status: "closed",
-    priority: "low",
-    createdAt: "2024-02-27T09:45:00",
-    lastUpdated: "2024-02-28T11:30:00"
-  }
-];
-
-const getStatusColor = (status: TicketStatus) => {
+const getStatusColor = (status:boolean) => {
   switch (status) {
-    case 'open':
+    case false:
       return 'bg-green-100 text-green-800';
-    case 'closed':
+    case true:
       return 'bg-gray-100 text-gray-800';
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
   }
 };
 
-const getPriorityIcon = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return <AlertCircle className="h-5 w-5 text-red-500" />;
-    case 'medium':
-      return <Clock className="h-5 w-5 text-yellow-500" />;
-    case 'low':
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
-  }
-};
 
 export function SupportTickets() {
+
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+
+  useEffect(()=>{
+    api.get('/support/').then((response) => {
+      console.log(response.data);
+      setTickets(response.data);
+    });
+  },[])
+
+  function closeTicket(ticketId: number) {
+    api.put(`/support/${ticketId}/close/`).then((response) => {
+      const updatedTickets = tickets.map((ticket) => {
+        if (ticket.ticket_id === response.data.ticketId) {
+          ticket.status = true;
+        }
+        return ticket;
+      });
+      setTickets(updatedTickets);
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">Support Tickets</h1>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <select className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 w-full sm:w-auto">
-            <option>All Tickets</option>
-            <option>Open</option>
-            <option>Pending</option>
-            <option>Closed</option>
-          </select>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
-            New Ticket
-          </button>
-        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -97,16 +60,10 @@ export function SupportTickets() {
                     Ticket
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                    Customer
+                    Customer Id
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                    Priority
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                    Last Updated
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -115,40 +72,28 @@ export function SupportTickets() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50">
+                  <tr key={ticket.ticket_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-start">
                         <MessageSquare className="h-5 w-5 text-gray-400 mr-3 mt-1 flex-shrink-0" />
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{ticket.subject}</div>
-                          <div className="text-sm text-gray-500 hidden sm:block">{ticket.message}</div>
-                          <div className="text-sm text-gray-900 sm:hidden">{ticket.customer}</div>
+                          <div className="text-sm font-medium text-gray-900">{ticket.ticket_description}</div>
+                          <div className="text-sm text-gray-500 hidden sm:block">{ticket.ticket_description}</div>
+                          <div className="text-sm text-gray-900 sm:hidden">{ticket.customer_id}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 hidden sm:table-cell">
-                      <div className="text-sm text-gray-900">{ticket.customer}</div>
+                      <div className="text-sm text-gray-900">{ticket.customer_id}</div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                        {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                        {ticket.status ? 'Closed' : 'Open'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <div className="flex items-center">
-                        {getPriorityIcon(ticket.priority)}
-                        <span className="ml-2 text-sm text-gray-500">
-                          {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 hidden lg:table-cell">
-                      {new Date(ticket.lastUpdated).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-3">
-                        <button className="text-blue-600 hover:text-blue-900">View</button>
-                        <button className="text-green-600 hover:text-green-900">Respond</button>
+                        <button className="text-blue-600 hover:text-blue-900" onClick={()=>closeTicket(ticket.ticket_id)}>Close</button>
                       </div>
                     </td>
                   </tr>

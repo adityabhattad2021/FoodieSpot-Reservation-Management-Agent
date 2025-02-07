@@ -310,3 +310,52 @@ async def update_reservation_status(
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation
 
+
+
+# Support ticket endpoints
+
+@app.post("/support/", response_model=schemas.SupportTicket, tags=["Support"])
+async def create_support_ticket(ticket: schemas.SupportTicketCreate, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
+    """
+    Create a new support ticket with the following details:
+    - customer_id: ID of the customer
+    - ticket_date: Date of the ticket
+    - ticket_time: Time of the ticket
+    - ticket_description: Description of the issue
+    - status: Ticket status (Open, Closed) (False = Open, True = Closed)
+    """
+    return crud.create_support_ticket(db=db, ticket=ticket)
+
+@app.get("/support/{ticket_id}", response_model=schemas.SupportTicket, tags=["Support"])
+async def get_support_ticket(ticket_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
+    """
+    Get detailed information about a specific support ticket.
+    """
+    ticket = crud.get_support_ticket(db, ticket_id=ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+    return ticket
+
+@app.get("/customers/{customer_id}/support/", response_model=List[schemas.SupportTicket], tags=["Support"])
+async def get_customer_support_tickets(customer_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
+    """
+    Get all support tickets for a specific customer.
+    """
+    return crud.get_customer_support_tickets(db, customer_id=customer_id)
+
+@app.put("/support/{ticket_id}/close/", response_model=schemas.SupportTicket, tags=["Support"])
+async def close_support_ticket(ticket_id: int, db: Session = Depends(get_db),auth: str = Depends(get_auth)):
+    """
+    Close a specific support ticket.
+    """
+    ticket = crud.close_support_ticket(db, ticket_id=ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+    return ticket
+
+@app.get("/support/", response_model=List[schemas.SupportTicket], tags=["Support"])
+async def get_all_support_tickets(db: Session = Depends(get_db),auth: str = Depends(get_auth)):
+    """
+    Get a list of all support tickets.
+    """
+    return crud.get_all_support_tickets(db)

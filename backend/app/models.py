@@ -85,6 +85,19 @@ class Customer(Base):
     phone = Column(String(15), nullable=False)
     email = Column(String(100), nullable=True)
 
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+    ticket_id = Column(Integer, primary_key=True, autoincrement=True)
+    customer_id = Column(Integer, ForeignKey('customers.customer_id'), nullable=False)
+    ticket_date = Column(Date, nullable=False)
+    ticket_time = Column(Time, nullable=False)
+    ticket_description = Column(String(255), nullable=False)
+
+    # False = Open, True = Closed
+    status = Column(Boolean, nullable=False,default=False)
+
+    customer = relationship("Customer")
+
 class Reservation(Base):
     __tablename__ = "reservations"
     reservation_id = Column(Integer, primary_key=True, autoincrement=True)

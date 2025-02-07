@@ -1,25 +1,61 @@
-import  { useState } from 'react';
-import { Send, ChefHat, LogIn } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Send, ChefHat, Trash, MessageCircle, Clock, Calendar } from 'lucide-react';
 import { ChatMessage } from '../types';
 import axios from 'axios';
+import { Header } from '../components/Header';
+
+const API_BASE_URL = 'http://localhost:8001';
 
 export function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content: "Hello! I'm your FoodieSpot assistant. I can help you find the perfect restaurant and make reservations. How can I assist you today?"
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    let storedSessionId = localStorage.getItem("sessionId");
+    if (!storedSessionId) {
+      fetchMessages("new");
+    }else{
+      fetchMessages(storedSessionId);
+    }
+  }, []);
+
+  const fetchMessages = async (sid: string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/conversation/${sid}`);
+      setMessages(response.data.history);
+      setSessionId(response.data.session_id);
+      console.log(response.data.history);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!sessionId) return;
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/session/${sessionId}`);
+      const newSessionId = response.data.session_id;
+      localStorage.setItem("sessionId", newSessionId);
+      setSessionId(newSessionId);
+      fetchMessages(newSessionId);
+    } catch (error) {
+      console.error('Error clearing session:', error);
+    }
+  };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !sessionId) return;
 
     const userMessage: ChatMessage = {
       role: 'user',
-      content: input
+      content: input,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -27,43 +63,61 @@ export function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8001/chat', {
-        message: input
+      const response = await axios.post(`${API_BASE_URL}/chat`, {
+        message: input,
+        session_id: sessionId
       });
-
+      if(response.data.detail === "Invalid session ID"){
+        alert("Invalid session ID, starting a new session");
+        fetchMessages("new");
+        return;
+      }
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: response.data.message
+        content: response.data.response
       }]);
     } catch (error) {
       console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, there was an error processing your request.'
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Link className="flex items-center space-x-3 cursor-pointer" to="/" >
-              <ChefHat className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">FoodieSpot</h1>
-            </Link>
-            <Link
-              to="/login"
-              className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
-            >
-              <LogIn className="h-5 w-5" />
-              <span>Staff Login</span>
-            </Link>
-          </div>
-        </div>
-      </div>
+  const handleKeyPress = (e:any) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+      <Header/>
+      {/* Chat Container */}
       <div className="max-w-4xl mx-auto p-4 h-[calc(100vh-80px)] flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 rounded-t-xl bg-slate-300 backdrop-blur-sm shadow-sm">
+        {/* Quick Actions */}
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+          {['Make a reservation', 'Popular dishes', 'Opening hours', 'Special dietary requirements'].map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => setInput(suggestion)}
+              className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all whitespace-nowrap text-sm"
+            >
+              {suggestion === 'Make a reservation' && <Calendar className="w-4 h-4 text-orange-500" />}
+              {suggestion === 'Popular dishes' && <ChefHat className="w-4 h-4 text-orange-500" />}
+              {suggestion === 'Opening hours' && <Clock className="w-4 h-4 text-orange-500" />}
+              {suggestion === 'Special dietary requirements' && <MessageCircle className="w-4 h-4 text-orange-500" />}
+              <span>{suggestion}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 rounded-t-xl bg-white/80 backdrop-blur-sm shadow-sm">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -72,44 +126,60 @@ export function ChatPage() {
               <div
                 className={`max-w-[80%] rounded-2xl p-4 ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white shadow-blue-200'
-                    : 'bg-white text-gray-900 shadow-sm'
-                } shadow-lg`}
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                } shadow-sm`}
               >
                 {message.content}
               </div>
             </div>
           ))}
+          <div ref={chatEndRef} />
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-slate-300 rounded-2xl p-4 shadow-sm animate-pulse">
+              <div className="bg-gray-100 rounded-2xl p-4 shadow-sm">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce delay-100" />
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce delay-200" />
+                  <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce delay-100" />
+                  <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce delay-200" />
                 </div>
               </div>
             </div>
           )}
         </div>
 
+        {/* Input Area */}
         <div className="bg-white p-4 rounded-b-xl shadow-lg">
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask about restaurants, cuisines, or make a reservation..."
-              className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-            <button
-              onClick={handleSend}
-              disabled={isLoading}
-              className="bg-blue-600 text-white rounded-xl px-6 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"
-            >
-              <Send className="w-5 h-5" />
-            </button>
+            <div className="flex-1 relative">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Ask about restaurants, cuisines, or make a reservation..."
+                rows={1}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all resize-none"
+              />
+              <div className="absolute right-3 bottom-2 text-xs text-gray-400">
+                Press Enter to send
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleSend}
+                disabled={isLoading || !input.trim()}
+                className="bg-orange-600 text-white rounded-xl px-4 py-3 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleDeleteSession}
+                disabled={isLoading}
+                className="bg-gray-200 text-gray-600 rounded-xl px-4 py-3 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all"
+              >
+                <Trash className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

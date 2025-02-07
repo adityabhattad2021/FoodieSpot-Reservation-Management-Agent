@@ -174,6 +174,32 @@ def get_customers(db: Session):
     return db.query(models.Customer).all()
 
 
+# Support Ticket CRUD operations
+def create_support_ticket(db: Session, ticket: schemas.SupportTicketCreate):
+    db_ticket = models.SupportTicket(**ticket.model_dump())
+    db.add(db_ticket)
+    db.commit()
+    db.refresh(db_ticket)
+    return db_ticket
+
+def get_support_ticket(db: Session, ticket_id: int):
+    return db.query(models.SupportTicket).filter(models.SupportTicket.ticket_id == ticket_id).first()
+
+def get_customer_support_tickets(db: Session, customer_id: int):
+    return db.query(models.SupportTicket).filter(models.SupportTicket.customer_id == customer_id).all()
+
+def close_support_ticket(db: Session, ticket_id: int):
+    db_ticket = db.query(models.SupportTicket).filter(models.SupportTicket.ticket_id == ticket_id).first()
+    if db_ticket:
+        db_ticket.status = True
+        db.commit()
+        db.refresh(db_ticket)
+    return db_ticket
+
+def get_all_support_tickets(db: Session):
+    return db.query(models.SupportTicket).all()
+
+
 # Reservation CRUD operations
 def create_reservation(db: Session, reservation: schemas.ReservationCreate):
     # First check if table is available

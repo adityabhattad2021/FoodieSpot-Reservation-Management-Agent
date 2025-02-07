@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, Settings, LogOut, MessageCircle, Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import {  Calendar, Users, Settings, LogOut, MessageCircle, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Overview } from '../components/dashboard/Overview';
-import { Reservations } from '../components/dashboard/Reservations';
-import { Customers } from '../components/dashboard/Customers';
-import { Settings as SettingsComponent } from '../components/dashboard/Settings';
+import { ReservationsTab } from '../components/dashboard/Reservations';
+import { CustomersTab } from '../components/dashboard/Customers';
 import { SupportTickets } from '../components/dashboard/SupportTickets';
 
 export function DashboardPage() {
@@ -14,11 +12,9 @@ export function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigation = [
-    { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
     { name: 'Customers', href: '/dashboard/customers', icon: Users },
     { name: 'Support Tickets', href: '/dashboard/support', icon: MessageCircle },
-    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
   return (
@@ -151,11 +147,10 @@ export function DashboardPage() {
           <main className="flex-1 relative lg:py-6">
             <div className="px-4 sm:px-6 lg:px-8 pt-16 lg:pt-0">
               <Routes>
-                <Route path="/" element={<Overview />} />
-                <Route path="/reservations" element={<Reservations />} />
-                <Route path="/customers" element={<Customers />} />
+                <Route path="/" element={<Navigate to="reservations" replace />} />
+                <Route path="/reservations" element={<ReservationsTab />} />
+                <Route path="/customers" element={<CustomersTab />} />
                 <Route path="/support" element={<SupportTickets />} />
-                <Route path="/settings" element={<SettingsComponent />} />
               </Routes>
             </div>
           </main>

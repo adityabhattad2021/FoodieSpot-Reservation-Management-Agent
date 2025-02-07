@@ -1,21 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, ChefHat, ArrowLeft } from 'lucide-react';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login,isAuthenticated } = useAuth();
+
+  useEffect(()=>{
+    if(isAuthenticated){
+      navigate('/dashboard');
+    }
+  },[isAuthenticated])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     try {
-      // await login(email, password);
+      await login(username, password);
       navigate('/dashboard');
     } catch (err) {
       setError('Invalid credentials');
@@ -28,7 +34,7 @@ export function LoginPage() {
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <Link to="/" className="absolute top-8 left-8 text-gray-600 hover:text-blue-600 flex items-center gap-2">
             <ArrowLeft className="h-5 w-5" />
-            Back to Chat
+            Back to Home
           </Link>
           
           <div className="flex flex-col items-center">
@@ -61,18 +67,16 @@ export function LoginPage() {
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email address
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  Username
                 </label>
                 <div className="mt-1">
                   <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
+                    id="username"
+                    name="username"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter your email"
                   />

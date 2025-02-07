@@ -4,7 +4,10 @@ import { ChatMessage } from '../types';
 import axios from 'axios';
 import { Header } from '../components/Header';
 
-const API_BASE_URL = 'http://localhost:8001';
+const api = axios.create({
+  baseURL: import.meta.env.VITE_CHAT_URL, 
+  timeout: 5000,
+});
 
 export function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -12,6 +15,8 @@ export function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  console.log("API Base URL:", import.meta.env.VITE_CHAT_URL);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -28,7 +33,10 @@ export function ChatPage() {
 
   const fetchMessages = async (sid: string) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/conversation/${sid}`);
+      const response = await api.get(`/conversation/${sid}`);
+      if (!response.data || !response.data.history) {
+        throw new Error("Invalid response structure");
+      }
       setMessages(response.data.history);
       setSessionId(response.data.session_id);
       console.log(response.data.history);
@@ -40,7 +48,7 @@ export function ChatPage() {
   const handleDeleteSession = async () => {
     if (!sessionId) return;
     try {
-      const response = await axios.delete(`${API_BASE_URL}/session/${sessionId}`);
+      const response = await api.delete(`/session/${sessionId}`);
       const newSessionId = response.data.session_id;
       localStorage.setItem("sessionId", newSessionId);
       setSessionId(newSessionId);
@@ -63,7 +71,7 @@ export function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat`, {
+      const response = await api.post('/chat/', {
         message: input,
         session_id: sessionId
       });

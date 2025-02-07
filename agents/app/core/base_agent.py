@@ -27,6 +27,17 @@ class BaseAgent(ABC):
     def _get_system_prompt(self) -> str:
         """Override this method in specialized agents"""
         raise NotImplementedError
+    
+    def to_dict(self,name:str,description:str) -> Dict[str, Any]:
+        """Convert tool to Groq API format"""
+        return {
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": self.parameters
+            }
+        }
 
     async def process_query(self,query) -> Dict[str, Any]:
         messages = [

@@ -7,6 +7,22 @@ class CreateReservationAgent(BaseAgent):
     def _initialize_tools(self) -> List[Any]:
         return [CreateReservationTool()]
     
+    @property
+    def parameters(self):
+         return {
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "integer", "description": "ID of the customer making the reservation"},
+                "restaurant_id": {"type": "integer", "description": "ID of the restaurant"},
+                "table_id": {"type": "integer", "description": "ID of the table to reserve"},
+                "reservation_date": {"type": "string", "format": "date", "description": "Date of the reservation"},
+                "reservation_time": {"type": "string", "format": "time", "description": "Time of the reservation"},
+                "number_of_guests": {"type": "integer", "description": "Number of people"},
+                "special_requests": {"type": "string", "description": "Any special requirements"},
+                "status": {"type": "string", "enum": ["CONFIRMED", "CANCELLED", "PENDING"], "description": "Status of the reservation"}
+            },
+            "required": ["customer_id", "restaurant_id", "table_id", "reservation_date", "reservation_time", "number_of_guests"]
+        }
 
     def _get_system_prompt(self):
         return """

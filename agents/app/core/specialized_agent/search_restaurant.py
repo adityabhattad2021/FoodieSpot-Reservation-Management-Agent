@@ -6,6 +6,23 @@ class SearchAgent(BaseAgent):
     def _initialize_tools(self) -> List[Any]:
         return [SearchRestaurantsTool()]
     
+    @property
+    def parameters(self):
+        return {
+            "type": "object",
+            "properties": {
+                "cuisine_type": {"type": "string", "enum": ["North Indian", "South Indian", "Chinese", "Italian", "Continental","Mughlai","Thai","Japanese","Mexican","Mediterranean","Bengali","Gujarati","Punjabi","Kerala","Hyderabadi"], "description": "Type of cuisine"},
+                "price_range": {"type": "string", "enum": ["$", "$$", "$$$"], "description": "Price category"},
+                "ambiance": {"type": "string", "enum": ["Casual", "Fine Outdoor", "Family", "Lounge"], "description": "Restaurant atmosphere"},
+                "min_seating": {"type": "integer", "description": "Minimum seating capacity required"},
+                "special_event_space": {"type": "boolean", "description": "Whether special events can be hosted"},
+                "dietary_options": {"type": "string", "description": "Specific dietary requirements"},
+                "skip": {"type": "integer", "default": 0},
+                "limit": {"type": "integer", "default": 100}
+            },
+            "required": ["cuisine_type"]
+        }
+    
     def _get_system_prompt(self) -> str:
         return """You are the FoodieBot Search Specialist. Your ONLY job is to help customers find restaurants.
 

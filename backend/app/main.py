@@ -7,6 +7,7 @@ from .auth import add_auth_routes, get_auth
 
 from . import schemas, crud
 from .dependencies import get_db
+from .init_db import init_database
 
 app = FastAPI(
     title="FoodieSpot API",
@@ -21,6 +22,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+init_database()
 
 add_auth_routes(app)
 

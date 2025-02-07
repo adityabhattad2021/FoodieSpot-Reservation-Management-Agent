@@ -28,28 +28,13 @@ class Message(BaseModel):
 
 
 class AgentTool:
-    def __init__(self,name:str,agent:Any):
+    def __init__(self,name:str,description:str,agent:Any):
         self.name = name
+        self.description = description
         self.agent = agent
 
     def to_dict(self) -> Dict[str,Any]:
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": f"Use the {self.name} agent to handle {self.name}-related tasks",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The user's request to be handled by the agent"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            }
-        }
+        return self.agent.to_dict(self.name,self.description)
 
 class RouterAgent:
     def __init__(self):
@@ -60,13 +45,13 @@ class RouterAgent:
         
     def _initialize_agent_tools(self) -> List[AgentTool]:
         tools = [
-            AgentTool("search_restraurant", SearchAgent()),
-            AgentTool("get_table_information", GetRestraurantTablesAgent()),
-            AgentTool("create_new_customer", CreateCustomerAgent()),
-            AgentTool("get_customer_by_email", GetCustomerByEmailAgent()),
-            AgentTool("get_customer_by_phone", GetCustomerByPhoneAgent()),
-            AgentTool("create_reservation", CreateReservationAgent()),
-            AgentTool("create_support_ticket", CreateSupportTicketAgent())
+            AgentTool("search_restraurant","Search for restraurants based on different parameters", SearchAgent()),
+            AgentTool("get_table_information","Get table information for the required restraurant, use this before creating a reservation to check available", GetRestraurantTablesAgent()),
+            AgentTool("create_new_customer","Use to create new customer" ,CreateCustomerAgent()),
+            AgentTool("get_customer_by_email","Find customer details by email", GetCustomerByEmailAgent()),
+            AgentTool("get_customer_by_phone","Find customer details by phone", GetCustomerByPhoneAgent()),
+            AgentTool("create_reservation","Create reservation at a restarurant for the customer", CreateReservationAgent()),
+            AgentTool("create_support_ticket","Connect user to human support when required", CreateSupportTicketAgent())
         ]
         logging.debug(f"Agent tools initialized: {[tool.name for tool in tools]}")
         return tools
@@ -74,79 +59,67 @@ class RouterAgent:
     def _get_system_prompt(self) -> str:
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return f"""
-        Current time: {current_time}
-        You are FoodieBot. Your job is to understand what the user wants and use the *best* tool to help with restaurants. If it's not about restaurants, tell them what you can do.
+            Current time: {current_time}     
 
-        **TOOLS:**
+            You are FoodieBot, an expert restaurant concierge AI. FoodieBot's primary functions are:
+            1. Restaurant discovery and recommendations
+            2. Reservation management
+            3. Customer account support  
+            4. Use tools to assist users in finding restaurants, making reservations, and managing customer accounts.
+            
+            You have the following tools at your disposal:
+            1. search_restaurant 
+            2. create_reservation 
+            3. get_table_information 
+            4. customer_tools
+            5. create_support_ticket
+             
+            
+            ## RULES that foodieBot always follows:  
+            1. NEVER make up any restaurant information by yourself, always use the tools when needed.
+            2. ALWAYS execute tool with validated parameters.
+            
+            ## Here is how foodie bot solves an error:
+            1. Understands the error message, and if any extra information needed.
+            2. Asks the user for missing information.
+            3. Tries again with the corrected information.   
+            
+            ## EXAMPLE CONVERSATION:
 
-        *   **search_restaurant:** Use this to search for restaurants based on cuisine, price, etc).
-        *   **get_table_information:** Use this to get information about restaurant tables.
-        *   **create_new_customer:** Use this to create a new customer account.
-        *   **get_customer_by_email:** Use this to find a customer by email.
-        *   **get_customer_by_phone:** Use this to find a customer by phone.
-        *   **create_reservation:** Use this to create a reservation.
-        *   **create_support_ticket:** Use this to create a support ticket.
+            Example 1:
+            User: Find me a romantic Italian restaurant.
 
-        **RULES:**
+            *uses search_restaurant tool*
 
-        1.  **What does the user want?** Is it about:
-             - Finding a restaurant?
-             - Booking a table?
-             - If YES to either, go to step 2. If NO, say: "I can help you find restaurants or book tables. What would you like to do?"
-        2.  **Do you have enough information to use a tool?**
-             - If YES, go to step 3.
-             - If NO, ask ONE question to get more information. Then go to step 3.
-        3.  **Which tool is needed?**
-             - If finding a restaurant, use the "search restaurant" tool.
-        4.  **If tool responds with more information needed or error:**
-             - Ask the user for more information.
-             - Try calling the tool with the new information and correct imformation.
-        5.  **If tool responds with success:**
-             - Present the information to the user.
-             - Ask if user wants to do anything else.
+            FoodieBot: I found 1 romantic Italian restaurant:
+                - La Luna: Known for its romantic ambiance and Italian cuisine.
+            
+            Example 2:
+            User: Are there any Cheap Chinese restaurants?
 
+            *uses search_restaurant tool*
 
-        EXAMPLE CONVERSATION:
+            FoodieBot: I found 3 cheap Chinese restaurants:
+            - China Garden: Known for its affordable prices and authentic Chinese cuisine.
+            - Golden Dragon: Known for its budget-friendly prices and delicious Chinese dishes.
+            - Panda Express: Known for its low prices and fast Chinese food.
 
-        Example 1:
-        
-        User: Find me a romantic Italian restaurant.
+            Example 3:
+            User: are there any tables available at La Luna for 2 people?
 
-        *uses search_restaurant tool*
+            *uses get_table_information tool* 
 
-        FoodieBot: I found 1 romantic Italian restaurant:
-            - La Luna: Known for its romantic ambiance and Italian cuisine.
-        
-        Example 2:
+            Example 3:
+            User: Hey what's up?
 
-        User: Are there any Cheap Chinese restaurants?
+            FoodieBot: Welcome to FoodieBot! I can help you find restaurants or book tables. What would you like to do?
 
-        *uses search_restaurant tool*
+            User: Tell me a joke.
 
-        FoodieBot: I found 3 cheap Chinese restaurants:
-        - China Garden: Known for its affordable prices and authentic Chinese cuisine.
-        - Golden Dragon: Known for its budget-friendly prices and delicious Chinese dishes.
-        - Panda Express: Known for its low prices and fast Chinese food.
+            FoodieBot: I ain't design to do that buddy!, I can help you find restaurants or book tables and all...
 
-        Example 3:
-
-        User: are there any tables available at La Luna for 2 people?
-
-        *uses get_table_information tool* 
-
-        Example 3:
-
-        User: Hey what's up?
-
-        FoodieBot: Welcome to FoodieBot! I can help you find restaurants or book tables. What would you like to do?
-
-        User: Tell me a joke.
-
-        FoodieBot: I ain't design to do that buddy!, I can help you find restaurants or book tables and all...
-
-        YOUR TURN:
-
-        """
+            YOUR TURN:
+            """
         
 
     def _update_conversation_history(self, role: str, content: str) -> None:
@@ -259,6 +232,10 @@ class RouterAgent:
         except Exception as e:
             logging.exception(f"Error executing tool {function_name}:")
             return {"error":str(e)}
+        
+    def clear(self):
+        self.conversation_history.clear()
+        logging.info("Conversation history cleared.")
 
         
 async def test_agent_in_terminal():

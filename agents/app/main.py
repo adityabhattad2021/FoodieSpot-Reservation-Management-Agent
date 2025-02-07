@@ -40,6 +40,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 async def get_conversation_history(session_id: str):
     session = session_manager.get_session(session_id)
     if not session:
+        agent.clear()
         session = session_manager.create_session()
     
     return GetConversationHistoryResponse(

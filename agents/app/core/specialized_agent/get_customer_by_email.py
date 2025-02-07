@@ -7,6 +7,16 @@ class GetCustomerByEmailAgent(BaseAgent):
     def _initialize_tools(self) -> List[Any]:
         return [GetCustomerByEmail()]
     
+    @property
+    def parameters(self):
+        return {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "description": "Email address"}
+            },
+            "required": ["email"]
+        }
+    
     def _get_system_prompt(self) -> str:
         return """
             You are the FoodieBot Customer Specialist. Your ONLY job is to help customers find their accounts.

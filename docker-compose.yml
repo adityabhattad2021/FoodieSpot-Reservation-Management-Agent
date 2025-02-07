@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=foodiespot_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d foodiespot_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/foodiespot_db
+      - SECRET_KEY=${SECRET_KEY}
+      - BACKEND_API_KEY=${BACKEND_API_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - ALGORITHM=${ALGORITHM}
+    env_file: 
+      - .env
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  agents:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - BACKEND_API_KEY=${BACKEND_API_KEY}
+      - API_BASE_URL=${API_BASE_URL}
+      - DEFAULT_MODEL=llama-3.1-8b-instant
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    ports:
+      - "8001:80"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_CHAT_URL=http://localhost:8001
+        - VITE_BACKEND_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_CHAT_URL=http://localhost:8001
+      - VITE_BACKEND_URL=http://localhost:8000
+    depends_on:
+      - backend
+      - agents
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

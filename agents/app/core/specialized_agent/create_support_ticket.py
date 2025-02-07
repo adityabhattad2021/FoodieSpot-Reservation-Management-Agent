@@ -5,6 +5,17 @@ from ..tools.support_management import CreateSupportTicket
 class CreateSupportTicketAgent(BaseAgent):
     def _initialize_tools(self):
         return [CreateSupportTicket()]
+    
+    @property
+    def parameters(self):
+        return {
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "integer", "description": "ID of the customer"},
+                "ticket_description": {"type": "string", "description": "Description of the ticket"},
+            },
+            "required": ["customer_id","ticket_description"]
+        }
 
     def _get_system_prompt(self):
         return """

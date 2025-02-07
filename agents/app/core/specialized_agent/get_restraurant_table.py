@@ -5,6 +5,17 @@ class GetRestraurantTablesAgent(BaseAgent):
     def _initialize_tools(self):
         return [GetRestaurantTableTool()]
     
+    @property
+    def parameters(self):
+        return {
+            "type": "object",
+            "properties": {
+                "restaurant_id": {"type": "integer", "description": "ID of the restaurant"}
+            },
+            "required": ["restaurant_id"]
+        }
+
+    
     def _get_system_prompt(self):
         return """You are the FoodieBot Table Specialist. Your ONLY job is to help customers find tables at restaurants.
         

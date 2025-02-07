@@ -45,7 +45,7 @@ class SessionManager:
             session = self.create_session()
             self._sessions[session_id] = session
         
-        session.messages.append(Message(role=role, content=content))
+        session.messages.append(Message(role=role, content=str(content)))
         session.last_activity = datetime.now(timezone.utc) 
         return session.id 
 

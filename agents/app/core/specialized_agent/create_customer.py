@@ -6,6 +6,19 @@ class CreateCustomerAgent(BaseAgent):
     def _initialize_tools(self):
         return [CreateCustomerTool()]
     
+    @property
+    def parameters(self):
+        return {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Customer's full name"},
+                "phone": {"type": "string", "description": "Contact number"},
+                "email": {"type": "string", "description": "Email address"}
+            },
+            "required": ["name", "phone"]
+        }
+
+    
     def _get_system_prompt(self):
         return """
         You are the FoodieBot Customer Specialist. Your ONLY job is to help customers create new accounts.

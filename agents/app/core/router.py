@@ -195,8 +195,6 @@ class RouterAgent:
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
 
-            print(response_message)
-
             if tool_calls:
                 logging.info(f"Tool calls detected: {tool_calls}")
 
@@ -263,7 +261,7 @@ class RouterAgent:
         
 async def test_agent_in_terminal():
     """Terminal-based testing interface for the RestaurantAgent"""
-    agent = Router()
+    agent = RouterAgent()
     print("\nWelcome to FoodieSpot Restaurant Assistant!")
     print("Type 'exit' to quit the conversation.\n")
 

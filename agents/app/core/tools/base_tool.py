@@ -5,7 +5,7 @@ from ...config import settings
 
 class BaseTool(ABC):
     def __init__(self):
-        self.api_client = APIClient(base_url=settings.API_BASE_URL)
+        self.api_client = APIClient()
     
     @property
     @abstractmethod

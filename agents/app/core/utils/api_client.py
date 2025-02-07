@@ -1,11 +1,24 @@
 from typing import Optional, Dict
+from ...config import settings
 import httpx
 
 class APIClient:
-    def __init__(self, base_url: str):
-        self.base_url = base_url.rstrip('/')
-        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=30.0)
+    def __init__(self):
+        
+        self.base_url = settings.API_BASE_URL.rstrip('/')
+        self.api_key = settings.BACKEND_API_KEY
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url, 
+            timeout=30.0,
+            headers=self._get_default_headers()
+        )
     
+    def _get_default_headers(self) -> Dict[str,str]:
+        return {
+            "X-API-Key": self.api_key,
+            "Content-Type": "application/json",
+        }
+
     async def __aenter__(self):
         return self
     

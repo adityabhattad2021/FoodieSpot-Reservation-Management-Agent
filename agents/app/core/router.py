@@ -5,14 +5,14 @@ from groq import Groq
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
-
 from ..config import settings
-from .specialized.search_agent import SearchAgent
-from .specialized.create_customer import CreateCustomerAgent
-from .specialized.get_customer_by_email import GetCustomerByEmailAgent
-from .specialized.get_customer_by_phone import GetCustomerByPhoneAgent
-from .specialized.get_restraurant_table import GetRestraurantTablesAgent
-from .specialized.create_reservation import CreateReservationAgent
+from .specialized_agent.search_restaurant import SearchAgent
+from .specialized_agent.create_customer import CreateCustomerAgent
+from .specialized_agent.get_customer_by_email import GetCustomerByEmailAgent
+from .specialized_agent.get_customer_by_phone import GetCustomerByPhoneAgent
+from .specialized_agent.get_restraurant_table import GetRestraurantTablesAgent
+from .specialized_agent.create_reservation import CreateReservationAgent
+from .specialized_agent.create_support_ticket import CreateSupportTicketAgent
 
 MAX_CONVERSATION_HISTORY = 10
 MAX_ITERATIONS = 2
@@ -65,7 +65,8 @@ class RouterAgent:
             AgentTool("create_new_customer", CreateCustomerAgent()),
             AgentTool("get_customer_by_email", GetCustomerByEmailAgent()),
             AgentTool("get_customer_by_phone", GetCustomerByPhoneAgent()),
-            AgentTool("create_reservation", CreateReservationAgent())
+            AgentTool("create_reservation", CreateReservationAgent()),
+            AgentTool("create_support_ticket", CreateSupportTicketAgent())
         ]
         logging.debug(f"Agent tools initialized: {[tool.name for tool in tools]}")
         return tools
@@ -84,6 +85,7 @@ class RouterAgent:
         *   **get_customer_by_email:** Use this to find a customer by email.
         *   **get_customer_by_phone:** Use this to find a customer by phone.
         *   **create_reservation:** Use this to create a reservation.
+        *   **create_support_ticket:** Use this to create a support ticket.
 
         **RULES:**
 

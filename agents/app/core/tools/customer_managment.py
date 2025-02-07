@@ -78,3 +78,4 @@ class GetCustomerByEmail(BaseTool):
             return await self.api_client.get("/customers/email/", params=kwargs)
         except Exception as e:
             return {"error": str(e)}
+        

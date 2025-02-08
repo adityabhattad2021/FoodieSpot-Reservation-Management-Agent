@@ -175,6 +175,61 @@ def seed_data():
                 "specialties": "Tacos, Burritos, Enchiladas",
                 "dietary_options": "Vegetarian options, Vegan available",
                 "features": "Tequila bar, Live music, Outdoor seating"
+            },
+            {
+                "name": "Seoul Kitchen",
+                "cuisine_type": CuisineType.KOREAN,
+                "area": "Domlur",
+                "price_range": PriceRange.PREMIUM,
+                "ambiance": Ambiance.MODERN,
+                "description": "Authentic Korean BBQ and traditional dishes",
+                "specialties": "Korean BBQ, Bibimbap, Kimchi, Soju selection",
+                "dietary_options": "Vegetarian options available",
+                "features": "Table-top grills, Private dining rooms, K-pop music"
+            },
+            {
+                "name": "Vietnam House",
+                "cuisine_type": CuisineType.VIETNAMESE,
+                "area": "Residency Road",
+                "price_range": PriceRange.MODERATE,
+                "ambiance": Ambiance.CASUAL,
+                "description": "Fresh Vietnamese cuisine with authentic flavors",
+                "specialties": "Pho, Banh Mi, Spring Rolls",
+                "dietary_options": "Vegetarian, Gluten-free options",
+                "features": "Open kitchen, Herb garden, Weekend cooking classes"
+            },
+            {
+                "name": "Maharaja's Kitchen",
+                "cuisine_type": CuisineType.RAJASTHANI,
+                "area": "Malleshwaram",
+                "price_range": PriceRange.PREMIUM,
+                "ambiance": Ambiance.TRADITIONAL,
+                "description": "Royal Rajasthani dining experience with desert ambiance",
+                "specialties": "Dal Baati Churma, Laal Maas, Ker Sangri",
+                "dietary_options": "Vegetarian and Non-vegetarian options",
+                "features": "Traditional seating, Folk music, Desert-themed decor"
+            },
+            {
+                "name": "Dim Sum Dynasty",
+                "cuisine_type": CuisineType.CHINESE,
+                "area": "Bellandur",
+                "price_range": PriceRange.LUXURY,
+                "ambiance": Ambiance.FINE_DINING,
+                "description": "Specializing in handcrafted dim sum and Cantonese cuisine",
+                "specialties": "Handmade Dim Sum, Peking Duck, Seafood",
+                "dietary_options": "Vegetarian dim sum available",
+                "features": "Live dim sum station, Tea ceremony, Lake view"
+            },
+            {
+                "name": "BBQ Nation",
+                "cuisine_type": CuisineType.GRILL,
+                "area": "Old Airport Road",
+                "price_range": PriceRange.MODERATE,
+                "ambiance": Ambiance.FAMILY,
+                "description": "Interactive BBQ dining experience",
+                "specialties": "Table BBQ, Grilled meats, Seafood",
+                "dietary_options": "Vegetarian grills, Non-vegetarian options",
+                "features": "Unlimited BBQ, Live counters, Interactive dining"
             }
         ]
 
@@ -215,12 +270,13 @@ def seed_data():
                 table = Table(
                     restaurant_id=restaurant.restaurant_id,
                     table_number=i + 1,
-                    seating_capacity=random.choice([2, 2, 4, 4, 4, 6, 6, 8, 8, 10]),
+                    seating_capacity=random.choice(
+                        [2, 2, 4, 4, 4, 6, 6, 8, 8, 10]),
                     table_type=random.choice(table_types),
                     status=TableStatus.AVAILABLE
                 )
                 tables.append(table)
-        
+
         for table in tables:
             db.add(table)
         db.commit()
@@ -234,12 +290,12 @@ def seed_data():
         db.add(customer)
         db.commit()
 
-
     except Exception as e:
         print(f"Error seeding data: {e}")
         db.rollback()
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_data()

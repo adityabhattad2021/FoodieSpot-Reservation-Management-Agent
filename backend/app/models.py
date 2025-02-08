@@ -29,6 +29,10 @@ class CuisineType(enum.Enum):
     PUNJABI = "Punjabi"
     KERALA = "Kerala"
     HYDERABADI = "Hyderabadi"
+    KOREAN = "Korean"
+    VIETNAMESE = "Vietnamese"
+    RAJASTHANI = "Rajasthani"
+    GRILL = "Grill"
 
 class PriceRange(enum.Enum):
     BUDGET = "$"

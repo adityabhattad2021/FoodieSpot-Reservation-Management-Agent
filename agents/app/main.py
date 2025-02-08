@@ -34,7 +34,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     response = result.get("messages", "There was an error processing your request")
     
     session_manager.add_message(session_id, "assistant", response)
-    return ChatResponse(response=response, session_id=session_id)
+    return ChatResponse(response=str(response), session_id=session_id)
 
 @app.get("/conversation/{session_id}", response_model=GetConversationHistoryResponse, tags=["Chat"])
 async def get_conversation_history(session_id: str):

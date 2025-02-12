@@ -1,5 +1,7 @@
+import random
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
+from sqlalchemy import func
 from datetime import date, time
 from . import models, schemas
 from typing import List, Optional
@@ -58,6 +60,11 @@ def search_restaurants(
 
     if area:
         query = query.filter(models.Restaurant.address.ilike(f"%{area}%"))
+
+    # if no attributes, return just 1 random restaurant
+    if not any([cuisine_type, price_range, ambiance, min_seating, special_event_space, dietary_options, area]):
+        random_restaurant = query.order_by(func.random()).first()
+        return [random_restaurant] if random_restaurant else []
     
     return query.offset(skip).limit(limit).all()
 

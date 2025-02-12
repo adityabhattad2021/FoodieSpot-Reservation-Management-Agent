@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from .schemas import ChatRequest, ChatResponse, GetConversationHistoryResponse
 from .session_manager import SessionManager
-from .core.router import RouterAgent
+from .core.foodiespot_agent import FoodieSpotAgent
 
 app = FastAPI(
     title="Restaurant Agent API",
@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-agent = RouterAgent()
+agent = FoodieSpotAgent()
 session_manager = SessionManager(session_timeout=3600) 
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
@@ -31,7 +31,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
     session_manager.add_message(session_id, "user", request.message)
     
     result = await agent.run(request.message)
-    response = result.get("messages", "There was an error processing your request")
+    print(result)
+    response = result.get("message", "There was an error processing your request")
     
     session_manager.add_message(session_id, "assistant", response)
     return ChatResponse(response=str(response), session_id=session_id)

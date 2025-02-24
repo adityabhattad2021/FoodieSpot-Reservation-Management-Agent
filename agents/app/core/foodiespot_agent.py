@@ -9,6 +9,29 @@ from groq import Groq
 from ..config import settings
 from .tools.restaurant_management import SearchRestaurantsTool
 
+
+
+class LLMClient:
+    def __init__(self):
+        self.llm = Groq(api_key=settings.GROQ_API_KEY)
+
+    def get_response(self, messages: List[Dict[str, str]]):
+        try:
+            response = self.llm.chat.completions.create(
+                model=settings.DEFAULT_MODEL,
+                messages=messages,
+                temperature=1,
+                max_completion_tokens=100,
+                top_p=1,
+                stream=False,
+                response_format={"type": "json_object"},
+                stop=None,
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            return {"error": str(e)}
+
+
 class AgentState(Enum):
     # level 1
     GREETING = "GREETING"
@@ -64,18 +87,9 @@ class IntentClassifier:
             {"role": "user", "content": user_input}
         ]
         
-        response = self.llm_client.chat.completions.create(
-            model=settings.DEFAULT_MODEL,
-            messages=messages,
-            temperature=1,
-            max_completion_tokens=100,
-            top_p=1,
-            stream=False,
-            response_format={"type": "json_object"},
-            stop=None,
-        )
+        response = self.llm_client.get_response(messages)
 
-        return json.loads(response.choices[0].message.content).get("category","OTHER")
+        return response.get("category","OTHER")
 
     
     def _get_system_prompt(self):
@@ -119,7 +133,7 @@ class IntentClassifier:
     
 class FoodieSpotAgent:
     def __init__(self):
-        self.llm_client = Groq(api_key=settings.GROQ_API_KEY)
+        self.llm_client = LLMClient()
         self.tools = self._initialize_agent_tools()
         self.context = AgentContext(current_state=AgentState.GREETING)
         
@@ -141,9 +155,7 @@ class FoodieSpotAgent:
                 if self.context.user_intent == "FIND_RESTAURANT":
 
                     # Find a restaurant based on user input
-                    response = self.llm_client.chat.completions.create(
-                        model=settings.DEFAULT_MODEL,
-                        messages=[
+                    response = self.llm_client.get_response(messages=[
                             {
                                 "role": "system",
                                 "content": "  You are a helpful assistant that can use tools to fulfill user requests.  You have access to the following tool:\n\n        ```json\n        {\n          \"name\": \"search_restaurants\",\n          \"description\": \"Search restaurants with multiple filters.\",\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"cuisine_type\": {\n                \"type\": \"string\",\n                \"enum\": [\"North Indian\", \"South Indian\", \"Chinese\", \"Italian\", \"Continental\",\"Mughlai\",\"Thai\",\"Japanese\",\"Mexican\",\"Mediterranean\",\"Bengali\",\"Gujarati\",\"Punjabi\",\"Kerala\",\"Hyderabadi\"],\n                \"description\": \"Type of cuisine\"\n              },\n              \"price_range\": {\n                \"type\": \"string\",\n                \"enum\": [\"$\", \"$$\", \"$$$\", \"$$$$\"],\n                \"description\": \"Price category\"\n              },\n              \"ambiance\": {\n                \"type\": \"string\",\n                \"enum\": [\"Casual\", \"Fine Outdoor\", \"Family\", \"Lounge\"],\n                \"description\": \"Restaurant atmosphere\"\n              },\n              \"min_seating\": {\n                \"type\": \"integer\",\n                \"description\": \"Minimum seating capacity required\"\n              },\n              \"special_event_space\": {\n                \"type\": \"boolean\",\n                \"description\": \"Whether special events can be hosted\"\n              },\n              \"dietary_options\": {\n                \"type\": \"string\",\n                \"description\": \"Specific dietary requirements (e.g., Vegetarian, Vegan, Gluten-free)\"\n              },\n                \"skip\": {\"type\": \"integer\", \"default\": 0, \"description\": \"Number of results to skip\"},\n                \"limit\": {\"type\": \"integer\", \"default\": 100, \"description\": \"Maximum number of results to return\"}\n            },\n            \"required\": []  // No parameters are strictly required\n          }\n        }\n        ```\n\n        To use this tool, respond with a JSON object that conforms to the tool's schema.  Specifically, the JSON should have a \"tool_name\" key and a \"tool_input\" key.  The \"tool_input\" should be a JSON object containing the parameters for the tool.  If the user's request can be fulfilled directly without using the tool, respond directly with the answer."
@@ -200,33 +212,13 @@ class FoodieSpotAgent:
                                 "role": "user",
                                 "content": user_input
                             }
-                        ],
-                        temperature=1,
-                        max_completion_tokens=1024,
-                        top_p=1,
-                        stream=False,
-                        response_format={"type": "json_object"},
-                        stop=None,
-                    )
+                        ])
 
-                    print("################################################################################")
-                    print("Response:", response.choices[0].message.content)
-                    print("################################################################################")
-
-                    selected_tool = json.loads(response.choices[0].message.content).get("tool_name")
-                    tool_input = json.loads(response.choices[0].message.content).get("tool_input")
-
-                    print("################################################################################")
-                    print("Selected tool:", selected_tool)
-                    print("Tool input:", tool_input)
-                    print("Self.tools:", self.tools)
-                    print("################################################################################")
+                    selected_tool = response.get("tool_name")
+                    tool_input = response.get("tool_input")
 
                     result = await self.tools[selected_tool].execute(**tool_input)
-
-                    print("################################################################################")
-                    print("Tool result:", result)
-                    print("################################################################################")
+                    print(result)
 
                     return {"message": "It is fucking workds!"}
 
@@ -261,7 +253,7 @@ class FoodieSpotAgent:
         elif user_intent == "MAKE_RESERVATION":
             return AgentState.RESERVATION_IN_PROGRESS  # Or a more specific state
         elif user_intent == "OTHER":
-            return AgentState.OTHER  # Go back to GREETING to handle the "OTHER" directly
+            return AgentState.OTHER
         else:
             return AgentState.GREETING #Default to init
         

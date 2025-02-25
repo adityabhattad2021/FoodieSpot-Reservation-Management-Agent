@@ -230,8 +230,6 @@ Before you begin, ensure you have:
 - Enhanced admin model system
 
 ## Example Converation
-![example, conversation](https://github.com/user-attachments/assets/32a72a89-4d78-4ec9-8693-914b38db4597)
-
-
-
+![Screenshot 2025-02-25 192233](https://github.com/user-attachments/assets/8d858dd3-4864-4ff6-a604-d3773f24e753)
+![Screenshot 2025-02-25 192302](https://github.com/user-attachments/assets/52b056bf-376f-49b7-bda0-179e9179cc20)
 

@@ -58,48 +58,51 @@ The system consists of three main components:
 │   ├── Dockerfile.dev
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── config.py      # Configuration settings
-│   │   ├── core
+│   │   ├── config.py          # Configuration settings
+│   │   ├── core/
 │   │   │   ├── __init__.py
-│   │   │   ├── foodiespot_agent.py # Main agent logic
-│   │   │   ├── restaurants.json # Sample restaurant data, already loaded in Pinecone
-│   │   │   ├── tools # Work in progress (not used in current state)
+│   │   │   ├── foodiespot_agent.py  # Main agent logic
+│   │   │   ├── restaurants.json     # Sample restaurant data, already loaded in Pinecone
+│   │   │   ├── tools/                # Work in progress (not used in current state)
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── base_tool.py
-│   │   │   │   ├── customer_managment.py
+│   │   │   │   ├── customer_management.py
 │   │   │   │   ├── reservation_management.py
 │   │   │   │   ├── restaurant_management.py
 │   │   │   │   └── support_management.py
-│   │   │   ├── utils
+│   │   │   ├── utils/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── api_client.py
 │   │   │   │   ├── llm_client.py
 │   │   │   │   └── prompts.py
-│   │   │   └── vector_store.py # Fuctions to interact with Pinecone vector database
+│   │   │   └── vector_store.py  # Functions to interact with Pinecone vector database
 │   │   ├── main.py
 │   │   ├── schemas.py
 │   │   └── session_manager.py
-│   └── requirements.txt   # Agent dependencies
+│   └── requirements.txt  # Agent dependencies
 ├── backend/               # Backend Service
 │   ├── Dockerfile
 │   ├── Dockerfile.dev
 │   ├── app/
-│   │   ├── auth.py       # Authentication logic
-│   │   ├── crud.py       # Database operations
-│   │   ├── database.py   # Database configuration
-│   │   ├── init_db.py    # Database initialization
-│   │   ├── main.py       # Backend entry point
-│   │   ├── models.py     # Database models
-│   │   ├── schemas.py    # Data validation schemas
-│   │   └── seed.py       # Initial data seeding
+│   │   ├── auth.py        # Authentication logic
+│   │   ├── crud.py        # Database operations
+│   │   ├── database.py    # Database configuration
+│   │   ├── init_db.py     # Database initialization
+│   │   ├── main.py        # Backend entry point
+│   │   ├── models.py      # Database models
+│   │   ├── schemas.py     # Data validation schemas
+│   │   └── seed.py        # Initial data seeding
 │   └── requirements.txt   # Backend dependencies
-└── frontend/             # React Frontend
-    ├── Dockerfile
-    ├── Dockerfile.dev
-    ├── src/
-        ├── components/   # Reusable components
-        ├── pages/        # Application pages
-        └── context/      # Auth Context for admin dashboard
+├── frontend/              # React Frontend
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── src/
+│   │   ├── components/    # Reusable components
+│   │   ├── pages/         # Application pages
+│   │   └── context/       # Auth Context for admin dashboard
+├── docker-compose.yml      # Production Docker Compose
+└── docker-compose.dev.yml  # Development Docker Compose with hot-reload
+
 ```
 
 ## Setup Instructions
@@ -136,7 +139,7 @@ Before you begin, ensure you have:
    docker-compose up --build
    ```
    ```
-   # For development mode
+   # For development mode (hot-reload)
    docker-compose -f docker-compose.dev.yml up --build
    ```
 
@@ -198,16 +201,10 @@ Before you begin, ensure you have:
    - Demonstrates ideal interactions
    - The specialized agents always work correctly with the given examples
 
-6. **Contextual Awareness**
-   ```python
-   current_time = datetime.datetime.now().strftime(...)
-   f"Current time: {current_time}"
-   ```
-   - Helps agent to provide time-sensitive responses such as making a reservation after 2 days.
 
 #### Limitations
  - Even with current design, the agent sometimes fails to understand the user intent and provides incorrect response.
- - This can be improved by using a better model for router agent.
+ - This can be improved by using a better model.
 
 ## Challenges and Known Issues
 

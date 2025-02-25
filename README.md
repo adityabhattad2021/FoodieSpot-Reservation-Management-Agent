@@ -44,11 +44,9 @@ The system consists of three main components:
 - Frontend ↔️ AI Agent: REST API
 - Database ↔️ Backend: SQL/ORM
 
-### Data Flow
-![data flow](https://github.com/user-attachments/assets/1f9021a3-cec2-45b4-9fe2-da59b9b47537)
+### Agent flow
+![Screenshot 2025-02-25 213125](https://github.com/user-attachments/assets/8d1337e7-6d74-4b83-8301-1b9f25affc9e)
 
-### Sequeunce Diagram
-![sequence diagram](https://github.com/user-attachments/assets/22504226-46e7-483c-a1f8-31bafa0b5be6)
 
 ## Project Structure
 ```

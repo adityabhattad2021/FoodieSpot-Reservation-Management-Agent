@@ -1,9 +1,8 @@
-from datetime import time, date, timedelta
+from datetime import time
 from sqlalchemy.orm import Session
 from .database import SessionLocal
-from .models import Restaurant, Table, Customer, Reservation, CuisineType, PriceRange, Ambiance, TableStatus
+from .models import Restaurant, Table, Customer, CuisineType, PriceRange, Ambiance, TableStatus
 import random
-from enum import Enum
 
 
 def seed_data():

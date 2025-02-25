@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ChefHat, Trash, MessageCircle, Clock, Calendar } from 'lucide-react';
+import { Send, ChefHat, Trash, MessageCircle, Clock, Calendar, Star, MapPin, Pizza, Coffee, Smile } from 'lucide-react';
 import { ChatMessage } from '../types';
 import axios from 'axios';
 import { Header } from '../components/Header';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_CHAT_URL, 
-  timeout: 10000,
+  timeout: 20000,
 });
 
 export function ChatPage() {
@@ -104,26 +104,50 @@ export function ChatPage() {
     }
   };
 
+  const quickSuggestions = [
+    { text: 'Make a reservation', icon: <Calendar className="w-4 h-4 text-orange-500" /> },
+    { text: 'Popular dishes', icon: <ChefHat className="w-4 h-4 text-orange-500" /> },
+    { text: 'Opening hours', icon: <Clock className="w-4 h-4 text-orange-500" /> },
+    { text: 'Special dietary requirements', icon: <MessageCircle className="w-4 h-4 text-orange-500" /> },
+  ];
+
+  const funSuggestions = [
+    { text: 'I feel like pizza tonight!', icon: <Pizza className="w-4 h-4 text-orange-500" /> },
+    { text: 'Best romantic date spots?', icon: <Star className="w-4 h-4 text-orange-500" /> },
+    { text: 'Recommend a breakfast place', icon: <Coffee className="w-4 h-4 text-orange-500" /> },
+    { text: 'Hidden gems in Indiranagar?', icon: <MapPin className="w-4 h-4 text-orange-500" /> },
+    { text: 'Where to take a big family?', icon: <Smile className="w-4 h-4 text-orange-500" /> },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <Header/>
-      {/* Chat Container */}
       <div className="max-w-4xl mx-auto p-4 h-[calc(100vh-80px)] flex flex-col">
-        {/* Quick Actions */}
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-          {['Make a reservation', 'Popular dishes', 'Opening hours', 'Special dietary requirements'].map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => setInput(suggestion)}
-              className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all whitespace-nowrap text-sm"
-            >
-              {suggestion === 'Make a reservation' && <Calendar className="w-4 h-4 text-orange-500" />}
-              {suggestion === 'Popular dishes' && <ChefHat className="w-4 h-4 text-orange-500" />}
-              {suggestion === 'Opening hours' && <Clock className="w-4 h-4 text-orange-500" />}
-              {suggestion === 'Special dietary requirements' && <MessageCircle className="w-4 h-4 text-orange-500" />}
-              <span>{suggestion}</span>
-            </button>
-          ))}
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {quickSuggestions.map((suggestion) => (
+              <button
+                key={suggestion.text}
+                onClick={() => setInput(suggestion.text)}
+                className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all whitespace-nowrap text-sm"
+              >
+                {suggestion.icon}
+                <span>{suggestion.text}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {funSuggestions.map((suggestion) => (
+              <button
+                key={suggestion.text}
+                onClick={() => setInput(suggestion.text)}
+                className="flex items-center space-x-2 bg-white/80 px-4 py-2 rounded-lg shadow-sm hover:shadow-md hover:bg-white transition-all whitespace-nowrap text-sm"
+              >
+                {suggestion.icon}
+                <span>{suggestion.text}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Messages */}

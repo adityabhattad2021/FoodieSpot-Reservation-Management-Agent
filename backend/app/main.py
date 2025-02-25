@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 from typing import Optional, List, Set
 from datetime import date, time
 from .auth import add_auth_routes, get_auth
@@ -9,10 +10,17 @@ from . import schemas, crud
 from .dependencies import get_db
 from .init_db import init_database
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_database()
+    yield
+    # Currently nothing to do here (when the app is shutting down)
+
 app = FastAPI(
     title="FoodieSpot API",
     description="API for restaurant management system",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -22,8 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-init_database()
 
 add_auth_routes(app)
 

@@ -1,13 +1,23 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from .schemas import ChatRequest, ChatResponse, GetConversationHistoryResponse
 from .session_manager import SessionManager
 from .core.foodiespot_agent import FoodieSpotAgent
+from .core.vector_store import init_vector_index
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_vector_index()
+    yield
+    # Currently nothing to do here (when the app is shutting down)
 
 app = FastAPI(
     title="Restaurant Agent API",
     description="Chat API for restaurant management agent",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -40,7 +50,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
 @app.get("/conversation/{session_id}", response_model=GetConversationHistoryResponse, tags=["Chat"])
 async def get_conversation_history(session_id: str):
     session = session_manager.get_session(session_id)
-    print("Session: ",session)
     if not session:
         agent.clear()
         session = session_manager.create_session()

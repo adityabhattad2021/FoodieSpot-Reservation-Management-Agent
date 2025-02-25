@@ -15,10 +15,6 @@ FoodieSpot is an AI-powered restaurant management system designed to streamline 
 
 ### ✨ Key Features
 - 🤖 Intelligent restaurant recommendations based on user preferences
-- ⚡ Real-time table availability checking
-- 📅 Automated reservation management
-- 👤 Customer profile management
-- 🎫 Support ticket system
 - 💬 Conversational AI interface
 
 ## Architecture
@@ -58,28 +54,35 @@ The system consists of three main components:
 ```
 .
 ├── agents/                 # AI Agent Service
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
 │   ├── app/
+│   │   ├── __init__.py
 │   │   ├── config.py      # Configuration settings
-│   │   ├── core/          # Core agent functionality
-│   │   │   ├── base_agent.py          # Base agent class, inhereted by specialized agents
-│   │   │   ├── router.py              # Main router agent that interacts with the end user and specialized agents
-│   │   │   ├── specialized_agent/     # Task-specific agents
-│   │   │   │   ├── create_customer.py       # Customer creation
-│   │   │   │   ├── create_reservation.py    # Reservation handling
-│   │   │   │   ├── create_support_ticket.py # Support tickets
-│   │   │   │   ├── get_customer_by_email.py # Customer lookup
-│   │   │   │   ├── get_restraurant_table.py # Table management
-│   │   │   │   └── search_restaurant.py     # Restaurant search
-│   │   │   ├── tools/                 # Agent tools
-│   │   │   │   ├── base_tool.py            # Base tool class, inherited by specialized tools
-│   │   │   │   ├── customer_managment.py   # Tools related to customer operations 
-│   │   │   │   ├── reservation_management.py # Tools related to reservation ops
-│   │   │   │   └── restaurant_management.py  # Tools related to estaurant ops
-│   │   │   └── utils/                 # Utility functions
-|   |   |       ├── api_client.py         # API client for interacting with backend (restaurant API)
-│   │   └── main.py       # Agent service entry point
+│   │   ├── core
+│   │   │   ├── __init__.py
+│   │   │   ├── foodiespot_agent.py # Main agent logic
+│   │   │   ├── restaurants.json # Sample restaurant data, already loaded in Pinecone
+│   │   │   ├── tools # Work in progress (not used in current state)
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── base_tool.py
+│   │   │   │   ├── customer_managment.py
+│   │   │   │   ├── reservation_management.py
+│   │   │   │   ├── restaurant_management.py
+│   │   │   │   └── support_management.py
+│   │   │   ├── utils
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── api_client.py
+│   │   │   │   ├── llm_client.py
+│   │   │   │   └── prompts.py
+│   │   │   └── vector_store.py # Fuctions to interact with Pinecone vector database
+│   │   ├── main.py
+│   │   ├── schemas.py
+│   │   └── session_manager.py
 │   └── requirements.txt   # Agent dependencies
 ├── backend/               # Backend Service
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
 │   ├── app/
 │   │   ├── auth.py       # Authentication logic
 │   │   ├── crud.py       # Database operations
@@ -91,10 +94,12 @@ The system consists of three main components:
 │   │   └── seed.py       # Initial data seeding
 │   └── requirements.txt   # Backend dependencies
 └── frontend/             # React Frontend
+    ├── Dockerfile
+    ├── Dockerfile.dev
     ├── src/
-    │   ├── components/   # Reusable components
-    │   ├── pages/        # Application pages
-    │   └── context/      # Auth Context for admin dashboard
+        ├── components/   # Reusable components
+        ├── pages/        # Application pages
+        └── context/      # Auth Context for admin dashboard
 ```
 
 ## Setup Instructions
@@ -104,6 +109,7 @@ The system consists of three main components:
 Before you begin, ensure you have:
 - Docker and Docker Compose installed
 - Groq API key
+- Pinecone API key
 
 ### Local Development Setup
 
@@ -118,8 +124,10 @@ Before you begin, ensure you have:
    # Copy environment template
    cp .env.example .env
 
-   # Add your Groq API key
+   # Add your Groq API key and Pinecone API key to .env
    GROQ_API_KEY=your_api_key_here
+   PINECONE_API_KEY=your_api_key_here
+
    ```
 
 3. **Launch Services**
@@ -127,6 +135,11 @@ Before you begin, ensure you have:
    # Start all services
    docker-compose up --build
    ```
+   ```
+   # For development mode
+   docker-compose -f docker-compose.dev.yml up --build
+   ```
+
 
 4. **Access the Application**
    - Frontend: [http://localhost:3000](http://localhost:3000) (credentials for admin staff login are in .env.example file)
@@ -140,7 +153,7 @@ Before you begin, ensure you have:
 
 ## Prompt Engineering Techniques
 
-> Reference: [router.py](agents/app/core/router.py) and [specialized agents](agents/app/core/specialized_agent/create_customer.py)
+> Reference: [prompts.py](agents/app/core/utils/prompts.py) 
 
 ### Key Design Elements
 

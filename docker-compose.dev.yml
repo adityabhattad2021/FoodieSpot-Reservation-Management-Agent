@@ -18,9 +18,12 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "8000:80"
+    volumes:
+      - ./backend/app:/code/app
+      - /code/__pycache__
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/foodiespot_db
       - SECRET_KEY=${SECRET_KEY}
@@ -35,11 +38,12 @@ services:
       - db
     networks:
       - app-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
 
   agents:
     build:
       context: ./agents
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - BACKEND_API_KEY=${BACKEND_API_KEY}
@@ -52,13 +56,17 @@ services:
       - backend
     ports:
       - "8001:80"
+    volumes:
+      - ./agents/app:/code/app
+      - /code/__pycache__
     networks:
       - app-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
       args:
         - VITE_CHAT_URL=http://localhost:8001
         - VITE_BACKEND_URL=http://localhost:8000
@@ -67,6 +75,9 @@ services:
     environment:
       - VITE_CHAT_URL=http://localhost:8001
       - VITE_BACKEND_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules 
     depends_on:
       - backend
       - agents

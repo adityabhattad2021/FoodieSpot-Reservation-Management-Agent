@@ -1,13 +1,23 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from .schemas import ChatRequest, ChatResponse, GetConversationHistoryResponse
 from .session_manager import SessionManager
-from .core.router import RouterAgent
+from .core.foodiespot_agent import FoodieSpotAgent
+from .core.vector_store import init_vector_index
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_vector_index()
+    yield
+    # Currently nothing to do here (when the app is shutting down)
 
 app = FastAPI(
     title="Restaurant Agent API",
     description="Chat API for restaurant management agent",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -18,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-agent = RouterAgent()
+agent = FoodieSpotAgent()
 session_manager = SessionManager(session_timeout=3600) 
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
@@ -31,7 +41,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
     session_manager.add_message(session_id, "user", request.message)
     
     result = await agent.run(request.message)
-    response = result.get("messages", "There was an error processing your request")
+    print(result)
+    response = result["message"]
     
     session_manager.add_message(session_id, "assistant", response)
     return ChatResponse(response=str(response), session_id=session_id)
@@ -45,11 +56,10 @@ async def get_conversation_history(session_id: str):
     
     return GetConversationHistoryResponse(
         history=session.messages,
-        session_id=session_id
+        session_id=session.id
     )
 
 @app.delete("/session/{session_id}", tags=["Chat"])
 async def clear_session(session_id: str):
     session_manager.delete_session(session_id)
-    new_session = session_manager.create_session()
-    return {"message": "Session cleared", "session_id": new_session.id}
+    return {"message": "Session cleared"}

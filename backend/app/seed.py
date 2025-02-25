@@ -1,9 +1,8 @@
-from datetime import time, date, timedelta
+from datetime import time
 from sqlalchemy.orm import Session
 from .database import SessionLocal
-from .models import Restaurant, Table, Customer, Reservation, CuisineType, PriceRange, Ambiance, TableStatus
+from .models import Restaurant, Table, Customer, CuisineType, PriceRange, Ambiance, TableStatus
 import random
-from enum import Enum
 
 
 def seed_data():
@@ -199,7 +198,7 @@ def seed_data():
                 "features": "Open kitchen, Herb garden, Weekend cooking classes"
             },
             {
-                "name": "Maharaja's Kitchen",
+                "name": "Maharaja Kitchen",
                 "cuisine_type": CuisineType.RAJASTHANI,
                 "area": "Malleshwaram",
                 "price_range": PriceRange.PREMIUM,
@@ -291,8 +290,8 @@ def seed_data():
         db.commit()
 
     except Exception as e:
-        print(f"Error seeding data: {e}")
         db.rollback()
+        print(f"Error seeding data: {str(e)}")
     finally:
         db.close()
 

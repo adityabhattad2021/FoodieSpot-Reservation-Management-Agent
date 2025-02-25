@@ -48,6 +48,8 @@ class Ambiance(enum.Enum):
     BISTRO = "Bistro"
     LOUNGE = "Lounge"
     OUTDOOR = "Outdoor"
+    MODERN = "Modern"
+    TRADITIONAL = "Traditional"
 
 class Restaurant(Base):
     __tablename__ = "restaurants"

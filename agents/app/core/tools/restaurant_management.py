@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Tuple, Any
 
 from ..tools.base_tool import BaseTool
 
@@ -111,7 +111,111 @@ class SearchRestaurantsTool(BaseTool):
             }
         }
     
+  
+class SearchRestaurantsTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "search_restaurants"
+
+    @property
+    def description(self) -> str:
+        return "Search restaurants with multiple filters"
+
+    @property
+    def parameters(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "cuisine_type": {
+                    "type": "string",
+                    "enum": [
+                        "North Indian", "South Indian", "Chinese", "Italian", "Continental", "Mughlai", "Thai",
+                        "Japanese", "Mexican", "Mediterranean", "Bengali", "Gujarati", "Punjabi", "Kerala", "Hyderabadi"
+                    ],
+                    "description": "Type of cuisine"
+                },
+                "price_range": {
+                    "type": "string",
+                    "enum": ["$", "$$", "$$$", "$$$$"],
+                    "description": "Price category"
+                },
+                "ambiance": {
+                    "type": "string",
+                    "enum": ["Casual", "Fine Outdoor", "Family", "Lounge"],
+                    "description": "Restaurant atmosphere"
+                },
+                "min_seating": {
+                    "type": "integer",
+                    "description": "Minimum seating capacity required"
+                },
+                "special_event_space": {
+                    "type": "boolean",
+                    "description": "Whether special events can be hosted"
+                },
+                "dietary_options": {
+                    "type": "string",
+                    "description": "Specific dietary requirements"
+                },
+                "skip": {
+                    "type": "integer",
+                    "default": 0
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 100
+                }
+            }
+        }
+
+    def validate_params(self, params: Dict[str, Any]) -> Tuple[bool, str]:
+        """ Validates input parameters before making an API call. """
+        valid_keys = {
+            "cuisine_type", "price_range", "ambiance", "min_seating",
+            "special_event_space", "dietary_options", "skip", "limit"
+        }
+        valid_cuisines = [
+            "North Indian", "South Indian", "Chinese", "Italian", "Continental", "Mughlai", "Thai",
+            "Japanese", "Mexican", "Mediterranean", "Bengali", "Gujarati", "Punjabi", "Kerala", "Hyderabadi"
+        ]
+        valid_price_ranges = ["$", "$$", "$$$", "$$$$"]
+        valid_ambiances = ["Casual", "Fine Outdoor", "Family", "Lounge"]
+
+        invalid_keys = [key for key in params if key not in valid_keys]
+        if invalid_keys:
+            return False, f"Invalid keys found: {invalid_keys}. Allowed keys are {valid_keys}."
+
+        if "cuisine_type" in params and params["cuisine_type"] not in valid_cuisines:
+            return False, f"Invalid cuisine_type: '{params['cuisine_type']}'. Must be one of {valid_cuisines}."
+
+        if "price_range" in params and params["price_range"] not in valid_price_ranges:
+            return False, f"Invalid price_range: '{params['price_range']}'. Must be one of {valid_price_ranges}."
+
+        if "ambiance" in params and params["ambiance"] not in valid_ambiances:
+            return False, f"Invalid ambiance: '{params['ambiance']}'. Must be one of {valid_ambiances}."
+
+        if "min_seating" in params:
+            if not isinstance(params["min_seating"], int) or params["min_seating"] <= 0:
+                return False, f"Invalid min_seating: '{params['min_seating']}'. Must be a positive integer."
+
+        if "special_event_space" in params and not isinstance(params["special_event_space"], bool):
+            return False, f"Invalid special_event_space: '{params['special_event_space']}'. Must be true or false."
+
+        if "skip" in params:
+            if not isinstance(params["skip"], int) or params["skip"] < 0:
+                return False, f"Invalid skip value: '{params['skip']}'. Must be a non-negative integer."
+
+        if "limit" in params:
+            if not isinstance(params["limit"], int) or params["limit"] <= 0:
+                return False, f"Invalid limit value: '{params['limit']}'. Must be a positive integer."
+
+        return True, "Parameters are valid."
+
     def execute(self, **kwargs) -> Dict[str, Any]:
+        """ Executes the restaurant search after validating parameters. """
+        is_valid, message = self.validate_params(kwargs)
+        if not is_valid:
+            return {"error": message}
+
         try:
             return self.api_client.get("/restaurants/search/", params=kwargs)
         except Exception as e:

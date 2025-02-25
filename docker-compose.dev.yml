@@ -47,6 +47,7 @@ services:
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - BACKEND_API_KEY=${BACKEND_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
       - API_BASE_URL=http://backend:80
       - DEFAULT_MODEL=llama-3.1-8b-instant
     env_file:

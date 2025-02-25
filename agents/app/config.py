@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
     DEFAULT_MODEL: str 
     BACKEND_API_KEY: str
+    PINECONE_API_KEY: str
     
 
 settings = Settings()

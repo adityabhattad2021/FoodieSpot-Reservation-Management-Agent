@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_CHAT_URL, 
-  timeout: 5000,
+  timeout: 10000,
 });
 
 export function ChatPage() {
@@ -37,9 +37,12 @@ export function ChatPage() {
       if (!response.data || !response.data.history) {
         throw new Error("Invalid response structure");
       }
+
       setMessages(response.data.history);
       setSessionId(response.data.session_id);
-      console.log(response.data.history);
+      if(sid === "new"){
+        localStorage.setItem("sessionId", response.data.session_id);
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
@@ -48,11 +51,10 @@ export function ChatPage() {
   const handleDeleteSession = async () => {
     if (!sessionId) return;
     try {
-      const response = await api.delete(`/session/${sessionId}`);
-      const newSessionId = response.data.session_id;
-      localStorage.setItem("sessionId", newSessionId);
-      setSessionId(newSessionId);
-      fetchMessages(newSessionId);
+      await api.delete(`/session/${sessionId}`);
+      setSessionId(null);
+      localStorage.removeItem("sessionId");
+      fetchMessages("new");
     } catch (error) {
       console.error('Error clearing session:', error);
     }
@@ -131,7 +133,7 @@ export function ChatPage() {
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div
+              <span
                 className={`max-w-[80%] rounded-2xl p-4 ${
                   message.role === 'user'
                     ? 'bg-orange-600 text-white'
@@ -139,7 +141,7 @@ export function ChatPage() {
                 } shadow-sm`}
               >
                 {message.content}
-              </div>
+              </span>
             </div>
           ))}
           <div ref={chatEndRef} />

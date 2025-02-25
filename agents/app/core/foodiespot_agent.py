@@ -1,22 +1,25 @@
+import os
 import logging
 import json
-import datetime
 import random
 from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from groq import Groq
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pinecone import ServerlessSpec
 from ..config import settings
 from .tools.restaurant_management import SearchRestaurantsTool
-
-
 
 class LLMClient:
     def __init__(self):
         self.llm = Groq(api_key=settings.GROQ_API_KEY)
 
-    def get_response(self, messages: List[Dict[str, str]]):
+    def get_response(self, messages: List[Dict[str, str]],is_json=True):
         try:
+            response_format = None
+            if is_json:
+                response_format = {"type": "json_object"}
             response = self.llm.chat.completions.create(
                 model=settings.DEFAULT_MODEL,
                 messages=messages,
@@ -24,10 +27,13 @@ class LLMClient:
                 max_completion_tokens=100,
                 top_p=1,
                 stream=False,
-                response_format={"type": "json_object"},
+                response_format=response_format,
                 stop=None,
             )
-            return json.loads(response.choices[0].message.content)
+            if is_json:
+                return json.loads(response.choices[0].message.content)
+            else:
+                return response.choices[0].message.content
         except Exception as e:
             return {"error": str(e)}
 
@@ -35,48 +41,36 @@ class LLMClient:
 class AgentState(Enum):
     # level 1
     GREETING = "GREETING"
-
     # level 2
     FIND_RESTAURANT = "find_restaurant"
     FAQ = "faq"
     MENU = "menu"
     MODIFY_BOOKING = "modify_booking"
-
     # level 3
     RESERVATION_IN_PROGRESS = "reservation_in_progress"
     MODIFICATION_IN_PROGRESS = "modification_in_progress"
-
     # level 4
     DATE_SELECTION = "date_selection"
-
     # level 5
     TIME_SELECTION = "time_selection"
-
     # level 6
     GUEST_SELECTION = "guest_selection"
-
     # level 7
     CONFIRMATION = "confirmation"
-
     # level x
     OTHER = "other"
-
-
-class Message(BaseModel):
-    role: str
-    content: str
 
 class AgentContext(BaseModel):
     current_state: AgentState
     user_intent: Optional[str] = None
-    conversation_history: List[Message] = []
+    conversation_history: List[Dict[str,str]] = []
 
 class IntentClassifier:
     def __init__(self, llm_client):
-        self.llm_client = llm_client
+        self.llm_client:LLMClient = llm_client
         self.available_intents = []
 
-    def classify_intent(self, current_state:AgentState,user_input:str) -> str:
+    def classify_intent(self, current_state:AgentState,conversation_history:List[Dict[str,str]]) -> str:
         if current_state == AgentState.GREETING:
             self.available_intents = ["FIND_RESTAURANT","OTHER"]
         if current_state == AgentState.FIND_RESTAURANT:
@@ -84,9 +78,9 @@ class IntentClassifier:
 
         messages = [
             {"role": "system", "content": self._get_system_prompt()},
-            {"role": "user", "content": user_input}
+            *conversation_history
         ]
-        
+    
         response = self.llm_client.get_response(messages)
 
         return response.get("category","OTHER")
@@ -130,106 +124,115 @@ class IntentClassifier:
             }}
             ```
             """
+
+class FindRestaurant:
+    def __init__(self, llm_client):
+        self.llm_client = llm_client
+        self.system_prompt = self._get_system_prompt()
+        self.pc = Pinecone(api_key=settings.PINECONE_API_KEY)
+        self.coversation_history = [
+            {"role":"system", "content":self.system_prompt}
+        ]
+        index_name = "restaurant-search"
+        if not self.pc.has_index(index_name):
+            self.pc.create_index(
+                name=index_name,
+                dimension=1024,
+                metric="cosine",
+                spec=ServerlessSpec(
+                    cloud="aws",
+                    region="us-east-1"
+                )
+            )
+        self.index = self.pc.Index(index_name)
+
+    def _search_restaurants(self,query,filter_dict=None,top_k=5):
+        query_embedding = self.pc.inference.embed(
+            model="multilingual-e5-large",
+            inputs=[query],
+            parameters={"input_type": "query"}
+        )
+
+        results = self.index.query(
+            namespace="restaurants",
+            vector=query_embedding[0]["values"],
+            filter=filter_dict,
+            top_k=top_k,
+            include_metadata=True
+        )
+
+        return results
     
+    def _format_search_results_for_llm(self,results):
+        if not results or "matches" not in results or not results["matches"]:
+            return "No restaurants found matching your criteria."
+        formatted_context = "RESTAURANT SEARCH RESULTS:\n\n"
+        for i, match in enumerate(results["matches"], 1):
+            restaurant = match["metadata"]
+            similarity_score = match["score"]
+            formatted_context += f"RESTAURANT #{i} (Relevance Score: {similarity_score:.2f})\n"
+            formatted_context += f"Name: {restaurant['name']}\n"
+            formatted_context += f"Cuisine: {restaurant['cuisine']}\n"
+            formatted_context += f"Location: {restaurant['area']}\n"
+            formatted_context += f"Price Range: {restaurant['price_range']}\n"
+            formatted_context += f"Ambiance: {restaurant['ambiance']}\n"
+            formatted_context += f"Description: {restaurant['description']}\n"
+            formatted_context += f"Specialties: {restaurant['specialties']}\n"
+            formatted_context += f"Dietary Options: {restaurant['dietary_options']}\n"
+            formatted_context += f"Features: {restaurant['features']}\n\n"
+        return formatted_context
+
+    def _search_and_format_for_llm(self,query, filter_dict=None, top_k=5):
+        results = self._search_restaurants(query, filter_dict, top_k)
+        context = self._format_search_results_for_llm(results)
+        return f"{context}\n\nUser message: {query}"
+    
+    def _get_system_prompt(self):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(script_dir, "system_prompts.json")
+        with open(file_path) as f:
+            prompts = json.load(f)
+        return prompts.get("find_restaurant_system_prompt")
+    
+    def handle_messages(self, user_input: str):
+        formatted_query = self._search_and_format_for_llm(user_input)
+        self.coversation_history.append({"role":"user", "content":formatted_query})
+        response = self.llm_client.get_response(self.coversation_history,is_json=False)
+        self.coversation_history.append({"role":"assistant", "content":response})
+        return response
+
 class FoodieSpotAgent:
     def __init__(self):
         self.llm_client = LLMClient()
         self.tools = self._initialize_agent_tools()
         self.context = AgentContext(current_state=AgentState.GREETING)
-        
-        # Initialize components
+
         self.intent_classifier = IntentClassifier(self.llm_client)
+        self.find_restaurant = FindRestaurant(self.llm_client)
 
     async def run(self, user_input: str) -> Dict[str, Any]:
         try:
-            self.context.conversation_history.append(Message(role="user", content=user_input))
-            self.context.user_intent = self.intent_classifier.classify_intent(self.context.current_state, user_input)
+            self.context.conversation_history.append({"role":"user", "content":user_input})
+            self.context.user_intent = self.intent_classifier.classify_intent(self.context.current_state, self.context.conversation_history)
+            print("User intent:", self.context.user_intent)
             
             if self.context.current_state == AgentState.GREETING:
                 self.context.current_state = self.get_next_state(self.context.user_intent)
 
-            print("Current state:", self.context.current_state)
-            print("User intent:", self.context.user_intent)
-
             if self.context.current_state == AgentState.FIND_RESTAURANT:
                 if self.context.user_intent == "FIND_RESTAURANT":
-
-                    # Find a restaurant based on user input
-                    response = self.llm_client.get_response(messages=[
-                            {
-                                "role": "system",
-                                "content": "  You are a helpful assistant that can use tools to fulfill user requests.  You have access to the following tool:\n\n        ```json\n        {\n          \"name\": \"search_restaurants\",\n          \"description\": \"Search restaurants with multiple filters.\",\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"cuisine_type\": {\n                \"type\": \"string\",\n                \"enum\": [\"North Indian\", \"South Indian\", \"Chinese\", \"Italian\", \"Continental\",\"Mughlai\",\"Thai\",\"Japanese\",\"Mexican\",\"Mediterranean\",\"Bengali\",\"Gujarati\",\"Punjabi\",\"Kerala\",\"Hyderabadi\"],\n                \"description\": \"Type of cuisine\"\n              },\n              \"price_range\": {\n                \"type\": \"string\",\n                \"enum\": [\"$\", \"$$\", \"$$$\", \"$$$$\"],\n                \"description\": \"Price category\"\n              },\n              \"ambiance\": {\n                \"type\": \"string\",\n                \"enum\": [\"Casual\", \"Fine Outdoor\", \"Family\", \"Lounge\"],\n                \"description\": \"Restaurant atmosphere\"\n              },\n              \"min_seating\": {\n                \"type\": \"integer\",\n                \"description\": \"Minimum seating capacity required\"\n              },\n              \"special_event_space\": {\n                \"type\": \"boolean\",\n                \"description\": \"Whether special events can be hosted\"\n              },\n              \"dietary_options\": {\n                \"type\": \"string\",\n                \"description\": \"Specific dietary requirements (e.g., Vegetarian, Vegan, Gluten-free)\"\n              },\n                \"skip\": {\"type\": \"integer\", \"default\": 0, \"description\": \"Number of results to skip\"},\n                \"limit\": {\"type\": \"integer\", \"default\": 100, \"description\": \"Maximum number of results to return\"}\n            },\n            \"required\": []  // No parameters are strictly required\n          }\n        }\n        ```\n\n        To use this tool, respond with a JSON object that conforms to the tool's schema.  Specifically, the JSON should have a \"tool_name\" key and a \"tool_input\" key.  The \"tool_input\" should be a JSON object containing the parameters for the tool.  If the user's request can be fulfilled directly without using the tool, respond directly with the answer."
-                            },
-                            {
-                                "role": "user",
-                                "content": "I'm looking for a casual Italian restaurant that's not too expensive."
-                            },
-                            {
-                                "role": "assistant",
-                                "content": "{\n          \"tool_name\": \"search_restaurants\",\n          \"tool_input\": {\n            \"cuisine_type\": \"Italian\",\n            \"price_range\": \"$\",\n            \"ambiance\": \"Casual\"\n          }\n }\n"
-                            },
-                            {
-                                "role": "user",
-                                "content": "User: I need a place that can host a party for 50 people, serves North Indian food and has a lounge."
-                            },
-                            {
-                                "role": "assistant",
-                                "content": "{\n   \"tool_name\": \"search_restaurants\",\n   \"tool_input\": {\n    \"cuisine_type\": \"North Indian\",\n    \"ambiance\": \"Lounge\",\n    \"min_seating\": 50,\n    \"ambiance\": \"Lounge\",\n    \"special_event_space\": true\n  }\n}"
-                            },
-                            {
-                                "role": "user",
-                                "content": "I'm looking for a vegan-friendly restaurant."
-                            },
-                            {
-                                "role": "assistant",
-                                "content": "{\n   \"tool_name\": \"search_restaurants\",\n   \"tool_input\": {\n     \"dietary_options\": \"Vegan\"\n   }\n}"
-                            },
-                            {
-                                "role": "user",
-                                "content": "Suggest a good restaurant in Nagpur"
-                            },
-                            {
-                                "role": "assistant",
-                                "content": "{\n   \"tool_name\": \"search_restaurants\",\n   \"tool_input\": {}\n}"
-                            },
-                            {
-                                "role": "user",
-                                "content": "Suggest a good restaurant in sadar, nagpur"
-                            },
-                            {
-                                "role": "assistant",
-                                "content": "{\n   \"tool_name\": \"search_restaurants\",\n   \"tool_input\": {}\n}"
-                            },
-                            {
-                                "role": "user",
-                                "content": "bro koi downtown me accha sa hotel bta na"
-                            },
-                            {
-                                "role": "assistant",
-                                "content": "{\n   \"tool_name\": \"search_restaurants\",\n   \"tool_input\": {}\n}"
-                            },
-                            {
-                                "role": "user",
-                                "content": user_input
-                            }
-                        ])
-
-                    selected_tool = response.get("tool_name")
-                    tool_input = response.get("tool_input")
-
-                    result = await self.tools[selected_tool].execute(**tool_input)
-                    print(result)
-
-                    return {"message": "It is fucking workds!"}
-
+                    response = self.find_restaurant.handle_messages(user_input)
+                    self.context.conversation_history.append({"role":"assistant", "content":response})
+                    return {"message": response}
 
                 elif self.context.user_intent == "MAKE_RESERVATION":
-                    pass
+                    response = "I'd be happy to help you make a reservation. This feature is coming soon!"
+                    self.context.conversation_history.append({"role": "assistant", "content": response})
+                    return {"message": response}
                 elif self.context.user_intent == "OTHER":
                     self.context.current_state = AgentState.OTHER
 
             if self.context.current_state == AgentState.OTHER:
-                print("Atleast we are here...................")
                 self.context.current_state = self.get_next_state(self.context.user_intent)
                 other_intent_messages = [  
                     "I'm still learning, and my specialty is helping with restaurants! I can find restaurants based on cuisine, price, and location, or even help you book a table. Is there anything restaurant-related I can assist you with today?",
@@ -238,34 +241,31 @@ class FoodieSpotAgent:
                     "I'm here to help with all your restaurant needs – from finding the perfect spot to booking a table. What kind of restaurant are you in the mood for today?",
                     "Thanks for your message! I'm always learning how to be more helpful. While I'm currently focused on restaurant recommendations and reservations, your input helps me improve. If you'd like to tell me what you were trying to do, it can help me in the future."
                 ]
-                ai_response = random.choice(other_intent_messages)
-                self.context.conversation_history.append(Message(role="assitant", content=ai_response))
+                response = random.choice(other_intent_messages)
+                self.context.conversation_history.append({'role':'assistant', 'content':response})
                 self.context.current_state = AgentState.GREETING
-                return {"message": ai_response}
+                return {"message": response}
 
 
         except Exception as e:
-            return {"error": str(e)}
+            print("Error in agent.run():",e)
+            return {"message": "I'm sorry, I'm having trouble understanding you right now. Please try again"}
         
     def get_next_state(self, user_intent):
         if user_intent == "FIND_RESTAURANT":
             return AgentState.FIND_RESTAURANT
         elif user_intent == "MAKE_RESERVATION":
-            return AgentState.RESERVATION_IN_PROGRESS  # Or a more specific state
+            return AgentState.RESERVATION_IN_PROGRESS 
         elif user_intent == "OTHER":
             return AgentState.OTHER
         else:
-            return AgentState.GREETING #Default to init
-        
-
-    
+            return AgentState.GREETING   
 
     def _initialize_agent_tools(self):
         return {
             "search_restaurants": SearchRestaurantsTool()
         }
 
-
     def clear(self):
         self.context = AgentContext(current_state=AgentState.GREETING)
-        logging.info("Agent context cleared.")
+        self.find_restaurant = FindRestaurant(self.llm_client)

@@ -32,7 +32,7 @@ class SessionManager:
             messages=[
                 Message(
                     role="assistant",
-                    content="Hello! I'm your FoodieSpot assistant. How can I help you today?"
+                    content="*Hello!* I'm your **FoodieSpot** assistant. How can I help you today?"
                 )
             ]
         )

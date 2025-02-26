@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ChefHat, Trash, MessageCircle, Clock, Calendar, Star, MapPin, Pizza, Coffee, Smile } from 'lucide-react';
-import { ChatMessage } from '../types';
+import { Send, Trash, Star, MapPin, Pizza, Coffee, Smile } from 'lucide-react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import { ChatMessage } from '../types';
 import { Header } from '../components/Header';
 
 const api = axios.create({
@@ -115,6 +116,20 @@ export function ChatPage() {
     { text: 'What\'s the best traditional restaurant?', icon: <Coffee className="w-4 h-4 text-orange-500" /> },
   ];
 
+  const FormattedMessage = ({ content, isUser }: { content: string, isUser: boolean }) => {
+    if (isUser) {
+      return <span className="whitespace-pre-wrap prose prose-sm text-white">{content}</span>;
+    }
+    
+    return (
+      <div className="markdown-content prose prose-sm max-w-none text-gray-900">
+        <ReactMarkdown>
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <Header/>
@@ -141,15 +156,18 @@ export function ChatPage() {
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <span
-                className={`max-w-[80%] rounded-2xl p-4 ${
+               <div
+                className={`max-w-[80%] rounded-2xl p-2 px-4 ${
                   message.role === 'user'
                     ? 'bg-orange-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
+                    : 'bg-gray-100'
                 } shadow-sm`}
               >
-                {message.content}
-              </span>
+                <FormattedMessage 
+                  content={message.content} 
+                  isUser={message.role === 'user'} 
+                />
+              </div>
             </div>
           ))}
           <div ref={chatEndRef} />

@@ -16,6 +16,35 @@ class AgentState(Enum):
     # level x
     OTHER = "other"
 
+class ReservationDetails(BaseModel):
+    """
+    ReservationDetails stores the details of a reservation.
+    """
+
+    restaurant_name: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    party_size: Optional[int] = None
+    user_id: Optional[str] = None
+
+    def missing_fields(self):
+        """
+        Returns a list of missing fields in the reservation details.
+        """
+
+        missing = []
+        if not self.restaurant_name:
+            missing.append("restaurant_name")
+        if not self.date:
+            missing.append("date")
+        if not self.time:
+            missing.append("time")
+        if not self.party_size:
+            missing.append("party_size")
+        return missing
+
+
+
 class AgentContext(BaseModel):
     """
     AgentContext stores the current state of the agent, the user's intent, and the conversation history.
@@ -23,6 +52,7 @@ class AgentContext(BaseModel):
     current_state: AgentState
     user_intent: Optional[str] = None
     conversation_history: List[Dict[str,str]] = []
+    reservation_details: Optional[ReservationDetails] = None
 
 class IntentClassifier:
     """
@@ -73,8 +103,12 @@ class FindRestaurant:
         try:
             messages = [
                 {"role": "system", "content": similarity_search_filter_prompt},
-                *conversation_history
             ]
+            conversation = "Here is the conversation between the user and the assistant:\n"
+            for message in conversation_history:
+                conversation += f"{message['role']}: {message['content']}\n"
+            conversation += "Based on the conversation, what are the keywords that describe the user what the user is talking about?"
+            messages.append({"role":"user","content":conversation})
             response = self.llm_client.get_response(messages,is_json=False)
             return response
         except Exception as e:

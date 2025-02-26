@@ -9,6 +9,8 @@ class LLMClient:
         self.llm = Groq(api_key=settings.GROQ_API_KEY)
 
     def get_response(self, messages: List[Dict[str, str]],is_json=True):
+        print("#"*100)
+        print(messages)
         try:
             response_format = None
             if is_json:
@@ -23,6 +25,8 @@ class LLMClient:
                 response_format=response_format,
                 stop=None,
             )
+            print(response.choices[0].message.content)
+            print("#"*100)
             if is_json:
                 return json.loads(response.choices[0].message.content)
             else:

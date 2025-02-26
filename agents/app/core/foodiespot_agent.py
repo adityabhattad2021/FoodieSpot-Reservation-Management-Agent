@@ -3,7 +3,7 @@ from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from .utils.llm_client import LLMClient
-from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt
+from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt, similarity_search_filter_prompt
 from .vector_store import search_restaurants,format_search_results_for_llm
 
 class AgentState(Enum):
@@ -54,26 +54,44 @@ class FindRestaurant:
     """
     def __init__(self, llm_client):
         self.llm_client = llm_client
+        self.system_prompt = find_restaurant_prompt
 
         # We are maintaining a seperate conversation history for FindRestaurant because it has context information with the user query which is not needed for the main conversation history.
         self.coversation_history = [
             {"role":"system", "content":find_restaurant_prompt}
         ]
 
-    def _search_and_format_for_llm(self,query, filter_dict=None, top_k=5):
+    def _search_and_format_for_llm(self,query, filter_dict=None, top_k=4):
         """
         This function searches for restaurants based on the user query in the vector database and formats the search results for the LLM
         """
         results = search_restaurants(query, filter_dict, top_k)
         context = format_search_results_for_llm(results)
-        return f"{context}\n\nUser message: {query}"
+        return context
     
-    def handle_messages(self, user_input: str):
+    def similarity_search_filter(self,conversation_history:List[Dict[str,str]]):
         try:
-            formatted_query = self._search_and_format_for_llm(user_input)
-            self.coversation_history.append({"role":"user", "content":formatted_query})
-            response = self.llm_client.get_response(self.coversation_history,is_json=False)
-            self.coversation_history.append({"role":"assistant", "content":response})
+            messages = [
+                {"role": "system", "content": similarity_search_filter_prompt},
+                *conversation_history
+            ]
+            response = self.llm_client.get_response(messages,is_json=False)
+            return response
+        except Exception as e:
+            print("Error in FindRestaurant.similarity_search_filter():",e)
+            return "None"
+
+    
+    def handle_messages(self, coversation_history:List[Dict[str,str]]):
+        try:
+            keywords = self.similarity_search_filter(coversation_history)
+            results = self._search_and_format_for_llm(keywords)
+            system_pompt_with_context = self.system_prompt + results
+            messages = [
+                {"role": "system", "content": system_pompt_with_context},
+                *coversation_history
+            ]
+            response = self.llm_client.get_response(messages,is_json=False)
             return response
         except Exception as e:
             print("Error in FindRestaurant.handle_messages():",e)
@@ -99,7 +117,7 @@ class FoodieSpotAgent:
 
             if self.context.current_state == AgentState.FIND_RESTAURANT:
                 if self.context.user_intent == "FIND_RESTAURANT":
-                    response = self.find_restaurant.handle_messages(user_input)
+                    response = self.find_restaurant.handle_messages(self.context.conversation_history)
                     self.context.conversation_history.append({"role":"assistant", "content":response})
                     return {"message": response}
 

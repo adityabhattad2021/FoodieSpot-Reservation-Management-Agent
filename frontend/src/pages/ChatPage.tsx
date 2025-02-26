@@ -104,19 +104,15 @@ export function ChatPage() {
     }
   };
 
-  const quickSuggestions = [
-    { text: 'Make a reservation', icon: <Calendar className="w-4 h-4 text-orange-500" /> },
-    { text: 'Popular dishes', icon: <ChefHat className="w-4 h-4 text-orange-500" /> },
-    { text: 'Opening hours', icon: <Clock className="w-4 h-4 text-orange-500" /> },
-    { text: 'Special dietary requirements', icon: <MessageCircle className="w-4 h-4 text-orange-500" /> },
-  ];
+
 
   const funSuggestions = [
     { text: 'I feel like pizza tonight!', icon: <Pizza className="w-4 h-4 text-orange-500" /> },
     { text: 'Best romantic date spots?', icon: <Star className="w-4 h-4 text-orange-500" /> },
-    { text: 'Recommend a breakfast place', icon: <Coffee className="w-4 h-4 text-orange-500" /> },
+    { text: 'Recommend a chinese place', icon: <Coffee className="w-4 h-4 text-orange-500" /> },
     { text: 'Hidden gems in Indiranagar?', icon: <MapPin className="w-4 h-4 text-orange-500" /> },
     { text: 'Where to take a big family?', icon: <Smile className="w-4 h-4 text-orange-500" /> },
+    { text: 'What\'s the best traditional restaurant?', icon: <Coffee className="w-4 h-4 text-orange-500" /> },
   ];
 
   return (
@@ -124,18 +120,6 @@ export function ChatPage() {
       <Header/>
       <div className="max-w-4xl mx-auto p-4 h-[calc(100vh-80px)] flex flex-col">
         <div className="mb-4 flex flex-col gap-2">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {quickSuggestions.map((suggestion) => (
-              <button
-                key={suggestion.text}
-                onClick={() => setInput(suggestion.text)}
-                className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all whitespace-nowrap text-sm"
-              >
-                {suggestion.icon}
-                <span>{suggestion.text}</span>
-              </button>
-            ))}
-          </div>
           <div className="flex gap-2 overflow-x-auto pb-2">
             {funSuggestions.map((suggestion) => (
               <button

@@ -1,9 +1,10 @@
 import random
+import json
 from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from .utils.llm_client import LLMClient
-from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt, similarity_search_filter_prompt
+from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt, similarity_search_filter_prompt, reservation_details_extraction_prompt, missing_reservation_details_prompt
 from .vector_store import search_restaurants,format_search_results_for_llm
 
 class AgentState(Enum):
@@ -25,7 +26,7 @@ class ReservationDetails(BaseModel):
     date: Optional[str] = None
     time: Optional[str] = None
     party_size: Optional[int] = None
-    user_id: Optional[str] = None
+    user_id: Optional[str] = 'TODO'
 
     def missing_fields(self):
         """
@@ -34,15 +35,16 @@ class ReservationDetails(BaseModel):
 
         missing = []
         if not self.restaurant_name:
+            print("restanrant name is missing: ",self.restaurant_name)
             missing.append("restaurant_name")
         if not self.date:
+            print("date is missing")
             missing.append("date")
         if not self.time:
             missing.append("time")
         if not self.party_size:
             missing.append("party_size")
         return missing
-
 
 
 class AgentContext(BaseModel):
@@ -52,7 +54,7 @@ class AgentContext(BaseModel):
     current_state: AgentState
     user_intent: Optional[str] = None
     conversation_history: List[Dict[str,str]] = []
-    reservation_details: Optional[ReservationDetails] = None
+    reservation_details: ReservationDetails = ReservationDetails()
 
 class IntentClassifier:
     """
@@ -66,7 +68,9 @@ class IntentClassifier:
             if current_state == AgentState.GREETING:
                 self.available_intents = ["FIND_RESTAURANT","OTHER"]
             if current_state == AgentState.FIND_RESTAURANT:
-                self.available_intents = ["MAKE_RESERVATION","OTHER","FIND_RESTAURANT"]
+                self.available_intents = ["MAKE_RESERVATION", "FIND_RESTAURANT", "OTHER"]
+            if current_state == AgentState.MAKE_RESERVATION:
+                self.available_intents = ["MAKE_RESERVATION", "FIND_RESTAURANT", "OTHER"]
             system_prompt = intent_classifier_prompt(self.available_intents)
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -131,6 +135,61 @@ class FindRestaurant:
             print("Error in FindRestaurant.handle_messages():",e)
             return "I'm sorry, I'm having trouble understanding you right now. Please try again."
 
+class MakeReservation:
+
+    def __init__(self, llm_client):
+        self.llm_client = llm_client
+
+    def extract_reservation_details(self, coversation_history:List[Dict[str,str]], reservation_details:ReservationDetails):
+        try:
+            messages = [
+                {"role": "system", "content": reservation_details_extraction_prompt},
+            ]
+            conversation = "Here is the conversation between the user and the assistant:\n"
+            for message in coversation_history:
+                conversation += f"{message['role']}: {message['content']}\n"
+            conversation += "Based on the conversation, please extract the reservation details."
+            messages.append({"role":"user","content":conversation})
+            response = self.llm_client.get_response(messages,is_json=True)
+            for key in response:
+                if hasattr(reservation_details,key):
+                    setattr(reservation_details,key,response[key])
+        except Exception as e:
+            print("Error in MakeReservation.extract_reservation_details():",e)
+
+    def make_reservation(self, reservation_details:ReservationDetails):
+        """
+            This will make the reservation and generate a random code that user can show at the restaurant.
+        """
+        code = self.generate_reservation_code()
+        # Make a call to the backend.
+
+        return f"Your reservation at {reservation_details.restaurant_name} for {reservation_details.party_size} people on {reservation_details.date} at {reservation_details.time} has been confirmed. Please show this code at the restaurant: {code}"
+    
+    def generate_reservation_code(self):
+        return ''.join(random.choices('0123456789', k=6))
+
+    def handle_messages(self, coversation_history:List[Dict[str,str]], reservation_details:ReservationDetails):
+        try:
+            self.extract_reservation_details(coversation_history,reservation_details)
+            print(reservation_details)
+            missing_fields = reservation_details.missing_fields()
+            if missing_fields:
+                first_field = missing_fields[0]
+                system_prompt = missing_reservation_details_prompt + f"Missing field: {first_field}"
+                messages = [
+                    {"role": "system", "content": system_prompt },
+                    *coversation_history
+                ]
+                response = self.llm_client.get_response(messages,is_json=False)
+                return response
+            else:
+                response = self.make_reservation(reservation_details)
+                return response
+        except Exception as e:
+            print("Error in MakeReservation.handle_messages():",e)
+            return "I'm sorry, I'm having trouble understanding you right now. Please try again."        
+
 class FoodieSpotAgent:
     def __init__(self):
         self.llm_client = LLMClient()
@@ -138,6 +197,7 @@ class FoodieSpotAgent:
 
         self.intent_classifier = IntentClassifier(self.llm_client)
         self.find_restaurant = FindRestaurant(self.llm_client)
+        self.make_reservation = MakeReservation(self.llm_client)
 
     async def run(self, user_input: str) -> Dict[str, Any]:
         try:
@@ -156,7 +216,7 @@ class FoodieSpotAgent:
                     return {"message": response}
 
                 elif self.context.user_intent == "MAKE_RESERVATION":
-                    response = "I'd be happy to help you make a reservation. This feature is coming soon!"
+                    response = self.make_reservation.handle_messages(self.context.conversation_history,self.context.reservation_details)
                     self.context.conversation_history.append({"role": "assistant", "content": response})
                     return {"message": response}
                 elif self.context.user_intent == "OTHER":
@@ -193,4 +253,3 @@ class FoodieSpotAgent:
 
     def clear(self):
         self.context = AgentContext(current_state=AgentState.GREETING)
-        self.find_restaurant = FindRestaurant(self.llm_client)

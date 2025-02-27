@@ -57,9 +57,9 @@ FoodieBot helps diners find ideal restaurants from 50+ locations based on cuisin
    - Collect verbatim feedback through "How did we do?" prompt popup at the end of conversation with the agent
 
 2. **Suggested Upgrades**
-   - Implement proper authentication for AI agent API
-   - Use redis database for chat and session management
-   - Use more powerful LLM for router_agent
+   - Implement voice-based interaction for hands-free reservations
+   - Implement a feedback system for user to rate the bot's performance
+   - Use an LLM which is good with different accents and languages
 
 2. **Enterprise Integration**  
    - Connect to POS systems for prepayments  

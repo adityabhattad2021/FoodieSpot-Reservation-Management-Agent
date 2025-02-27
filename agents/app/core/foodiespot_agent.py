@@ -62,17 +62,10 @@ class IntentClassifier:
     def __init__(self, llm_client):
         self.llm_client:LLMClient = llm_client
 
-    def classify_intent(self, current_state:AgentState,conversation_history:List[Dict[str,str]]) -> str:
+    def classify_intent(self, conversation_history:List[Dict[str,str]]) -> str:
         try:
-            if current_state == AgentState.GREETING:
-                self.available_intents = ["FIND_RESTAURANT","OTHER"]
-            if current_state == AgentState.FIND_RESTAURANT:
-                self.available_intents = ["MAKE_RESERVATION", "FIND_RESTAURANT", "OTHER"]
-            if current_state == AgentState.MAKE_RESERVATION:
-                self.available_intents = ["MAKE_RESERVATION", "FIND_RESTAURANT", "OTHER"]
-            system_prompt = intent_classifier_prompt(self.available_intents)
             messages = [
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": intent_classifier_prompt},
                 *conversation_history
             ]
             response = self.llm_client.get_response(messages)
@@ -175,7 +168,7 @@ class MakeReservation:
             self.extract_reservation_details(coversation_history,reservation_details)
             print(reservation_details)
             missing_fields = reservation_details.missing_fields()
-            if missing_fields:
+            if len(missing_fields) != 0:
                 first_field = missing_fields[0]
                 system_prompt = missing_reservation_details_prompt + f"Missing field: {first_field}"
                 messages = [
@@ -205,26 +198,20 @@ class FoodieSpotAgent:
             self.context.conversation_history.append({"role":"user", "content":user_input})
 
             # Classify the user intent for all the messages
-            self.context.user_intent = self.intent_classifier.classify_intent(self.context.current_state, self.context.conversation_history)
-
-            if self.context.current_state == AgentState.GREETING:
-                self.context.current_state = self.get_next_state(self.context.user_intent)
+            self.context.user_intent = self.intent_classifier.classify_intent(self.context.conversation_history)
+            self.context.current_state = self.get_next_state(self.context.user_intent)
 
             if self.context.current_state == AgentState.FIND_RESTAURANT:
-                if self.context.user_intent == "FIND_RESTAURANT":
-                    response = self.find_restaurant.handle_messages(self.context.conversation_history)
-                    self.context.conversation_history.append({"role":"assistant", "content":response})
-                    return {"message": response}
+                response = self.find_restaurant.handle_messages(self.context.conversation_history)
+                self.context.conversation_history.append({"role":"assistant", "content":response})
+                return {"message": response}
 
-                elif self.context.user_intent == "MAKE_RESERVATION":
-                    response = self.make_reservation.handle_messages(self.context.conversation_history,self.context.reservation_details)
-                    self.context.conversation_history.append({"role": "assistant", "content": response})
-                    return {"message": response}
-                elif self.context.user_intent == "OTHER":
-                    self.context.current_state = AgentState.OTHER
+            elif self.context.current_state == AgentState.MAKE_RESERVATION:
+                response = self.make_reservation.handle_messages(self.context.conversation_history,self.context.reservation_details)
+                self.context.conversation_history.append({"role": "assistant", "content": response})
+                return {"message": response}
 
-            if self.context.current_state == AgentState.OTHER:
-                self.context.current_state = self.get_next_state(self.context.user_intent)
+            elif self.context.current_state == AgentState.OTHER:
                 other_intent_messages = [  
                     "I'm still learning, and my specialty is helping with restaurants! I can find restaurants based on cuisine, price, and location, or even help you book a table. Is there anything restaurant-related I can assist you with today?",
                     "Thanks for your message! I'm designed to be a restaurant expert. If you're looking for recommendations or reservations, I'd be happy to help. Otherwise, I might not be the best resource.",
@@ -234,7 +221,6 @@ class FoodieSpotAgent:
                 ]
                 response = random.choice(other_intent_messages)
                 self.context.conversation_history.append({'role':'assistant', 'content':response})
-                self.context.current_state = AgentState.GREETING
                 return {"message": response}
 
 

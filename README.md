@@ -44,9 +44,8 @@ The system consists of three main components:
 - Frontend ↔️ AI Agent: REST API
 - Database ↔️ Backend: SQL/ORM
 
-### Agent flow
-![Screenshot 2025-02-25 213125](https://github.com/user-attachments/assets/8d1337e7-6d74-4b83-8301-1b9f25affc9e)
-
+# Agent State Transition flow
+![FoodSpot Agent Flow](https://github.com/user-attachments/assets/087b86e1-ca02-4e95-8105-612d69717dcb)
 
 ## Project Structure
 ```
@@ -63,11 +62,7 @@ The system consists of three main components:
 │   │   │   ├── restaurants.json     # Sample restaurant data, already loaded in Pinecone
 │   │   │   ├── tools/                # Work in progress (not used in current state)
 │   │   │   │   ├── __init__.py
-│   │   │   │   ├── base_tool.py
-│   │   │   │   ├── customer_management.py
 │   │   │   │   ├── reservation_management.py
-│   │   │   │   ├── restaurant_management.py
-│   │   │   │   └── support_management.py
 │   │   │   ├── utils/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── api_client.py
@@ -156,49 +151,47 @@ Before you begin, ensure you have:
 
 > Reference: [prompts.py](agents/app/core/utils/prompts.py) 
 
-### Key Design Elements
+### Key Design Elements (In order)
 
 1. **Role Definition & Scope Enforcement**
    ```python
-   "You are FoodieBot. Your job is to understand what the user wants and use the *best* tool to help with restaurants."
+   "You are FoodieBot, a friendly restaurant recommendation assistant. Your goal is to help users find restaurants based ONLY on the information provided in context."
    ```
-   - Strict scope limitation
-   - Explicit restaurant context
-   - Tool-oriented thinking
 
-2. **Tool Integration Framework**
+
+2. **Core Rules & Response Structure**
    ```python
-   "**TOOLS:**\n1. **search_restaurant:** Use this to search..."
+   "## CORE RULES:
+   1. ONLY use restaurants from the query context—never make up details.
+   2. Use short, simple sentences and avoid fancy words.
+   3. Keep responses brief: 1-2 sentences per recommendation.
+   4. Remember the restaurant you're talking about and stick to it unless the user asks for alternatives.
+   5. Strictly use markdown formatting for all responses."
    ```
-   - Prioritized by usage frequency
-   - Natural language descriptions
-   - Embedded tool selection logic
 
-3. **Defined Rules**
+3. **Query-Specific Response Templates**
    ```python
-   """1. **What does the user want?** Is it about:
-       - Finding a restaurant?
-       - Booking a table?"""
+   "## RESPONSE ORDER:
+   1. Name and Location: "I recommend [Name] in [Location]."
+   2. Price and Cuisine: "It's a [price range] [cuisine] spot."
+   3. Key Info: "They have [feature] and [dietary option]."
+   4. Specialties: "Try their [dish 1] or [dish 2].""
    ```
-   - Suggests clear decision-making process
 
-
-4. **Tries to teach agent to handle error and try again**
+4. **Extensive Few-Shot Examples**
    ```python
-   """4. **If tool responds with more information needed:**
-       - Ask the user ONE question
-       - Try calling tool with new information"""
+   "## Example 1: Basic Recommendation
+   User: "I'm looking for Indian food in Indiranagar"
+   FoodieBot: I recommend **Punjabi Dhaba** in Indiranagar. It's a *North Indian* restaurant with outdoor seating."
    ```
-   - Single-question rule prevents loops
-   - Tool-based validation
+   - Demonstrates ideal conversation flows
 
-5. **Few Shot Prompting**
+
+5. **Error Handling & Recovery Patterns**
    ```python
-   "Example 1:\nUser: Find me romantic Italian..."
+   "### Out-of-Context Queries:
+   - Say: "I don't see that in the results." Then: "Here's [available option] instead.""
    ```
-   - Demonstrates ideal interactions
-   - The specialized agents always work correctly with the given examples
-
 
 #### Limitations
  - Even with current design, the agent sometimes fails to understand the user intent and provides incorrect response.
@@ -220,11 +213,10 @@ Before you begin, ensure you have:
 
 ### Future Improvements
 
-- Redis integration for chat/session management
-- Agent service authentication
-- Enhanced admin model system
+- Implement voice-based interaction
+- Implement a feedback system for user ratings
+- Use an LLM model with better language understanding
 
 ## Example Converation
-![Screenshot 2025-02-25 192233](https://github.com/user-attachments/assets/8d858dd3-4864-4ff6-a604-d3773f24e753)
-![Screenshot 2025-02-25 192302](https://github.com/user-attachments/assets/52b056bf-376f-49b7-bda0-179e9179cc20)
 
+[![FoodieSpot Demo Youtube Thumbnail](https://github.com/user-attachments/assets/cd6f1eda-3879-4ba9-bc39-f08221eb3767)](https://youtu.be/OJEZVylg6FQ)

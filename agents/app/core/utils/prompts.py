@@ -11,7 +11,7 @@ After analyzing the conversation:
 
 VERY IMPORTANT: If user is talking about specific restaurants, INCLUDE that restaurant name if it is present in the conversation.
 
-## EXAMPLES:
+###################################################### EXAMPLES #######################################################:
 
 Example 1
 - User: "I want to find a good Indian restaurant in the city."
@@ -27,10 +27,46 @@ Expected Output: "family dinner, vegetarian options, budget-friendly"
 
 Example 3
 - User: "I am looking for a place to celebrate my birthday with a group of friends."
-- Assitant: "How about **Green Leaf** in Indiranagar?"
+- Assistant: "How about **Green Leaf** in Indiranagar?"
 - User: "Is this place good for kids?"
 
 Expected Output: "Green Leaf, kids"
+
+Example 4
+- User: "I'd like to book a table at Truffles for tomorrow."
+- Assistant: "What time would you like to make the reservation?"
+- User: "Around 7 PM for 4 people."
+
+Expected Output: "Truffles, reservation, tomorrow, 7 PM, 4 people"
+
+Example 5
+- User: "Do they have outdoor seating?"
+- Assistant: "Yes, **Punjabi Dhaba** has a nice outdoor seating area."
+
+Expected Output: "Punjabi Dhaba, outdoor seating"
+
+Example 6
+- Assistant: "I am about to make a reservation at Azure for 2 people on Friday at 8 PM. Would you like me to confirm this?"
+- User: "Yes, please go ahead."
+
+Expected Output: "Azure, reservation, Friday, 8 PM, 2 people, confirm"
+
+Example 7
+- User: "Actually, can we change the time to 9 PM instead?"
+- Assistant: "Sure, I can update the reservation time to 9 PM. Is that okay?"
+- User: "Yes, that's perfect."
+
+Expected Output: "reservation, 9 PM, update, confirm"
+
+Example 8
+- User: "Are there any Italian restaurants with private dining rooms?"
+- Assistant: "**Little Italy** has private dining options for groups."
+- User: "Great! And do they take reservations for large groups?"
+
+Expected Output: "Little Italy, private dining, large groups, reservations"
+
+###################################################### EXAMPLES END #######################################################:
+
 
 YOUR TURN:
 
@@ -152,84 +188,137 @@ CONTEXT:
 """
 
 
-def intent_classifier_prompt(available_intents: List[str]) -> str:
-    if available_intents == []:
-        raise ValueError("No available intents to classify.")
-    return f"""
-        Classify the user's intent into ONE of these categories, **remembering any information that may have been provided in previous messages**. If the user's intent does not match any of the categories, classify it as "OTHER":
-        - {', '.join(available_intents)}
+intent_classifier_prompt =  """
+    Classify the user's intent into ONE of these categories, **remembering any information that may have been provided in previous messages**. If the user's intent does not match any of the categories, classify it as "OTHER":
+    - FIND_RESTAURANT
+    - MAKE_RESERVATION
+    - OTHER
 
-        Respond with ONLY the category name in the following JSON format:
-        e.g.
-        ```json
-        {{
-        "category": "{available_intents[0]}"
-        }}
-        ```
+    Respond with ONLY the category name in the following JSON format:
+    ```json
+    {
+      "category": "[CATEGORY_NAME]"
+    }
+    ```
 
-        ################################################### Examples Responses ################################################
+    ################################################### Examples Responses ################################################
 
-        User: "I'm craving some Indian food."
-        Expected Output:
-        ```json
-        {{
-        "category": "FIND_RESTAURANT"
-        }}
-        ```
+    User: "I'm craving some Indian food."
+    Expected Output:
+    ```json
+    {
+      "category": "FIND_RESTAURANT"
+    }
+    ```
 
-        User: "Can you reserve a table for four at the new Italian place on Main Street for Saturday night?"
-        Expected Output:
-        ```json
-        {{
-        "category": "MAKE_RESERVATION"
-        }}
-        ```
+    User: "Can you reserve a table for four at the new Italian place on Main Street for Saturday night?"
+    Expected Output:
+    ```json
+    {
+      "category": "MAKE_RESERVATION"
+    }
+    ```
 
-        User: "Can we book a table for two at 7 PM?"
-        Expected Output:
-        ```json
-        {{
-        "category": "MAKE_RESERVATION"
-        
-        }}
+    User: "Can we book a table for two at 7 PM?"
+    Expected Output:
+    ```json
+    {
+      "category": "MAKE_RESERVATION"
+    }
+    ```
 
-        User: "What's the capital of France?"
-        Expected Output:
-        ```json
-        {{
-        "category": "OTHER"
-        }}
-        ```
+    User: "What's the capital of France?"
+    Expected Output:
+    ```json
+    {
+      "category": "OTHER"
+    }
+    ```
 
-        User: "Do you have the contact details for the new Italian place on Main Street?"
-        Expected Output:
-        ```json
-        {{
-        "category": "FIND_RESTAURANT"
-        }}
+    User: "Do you have the contact details for the new Italian place on Main Street?"
+    Expected Output:
+    ```json
+    {
+      "category": "FIND_RESTAURANT"
+    }
+    ```
 
-        User: "Do you have phone of [restaurant_name]??
-        Expected Output:
-        ```json
-        {{
-        "category": "FIND_RESTAURANT"
-        }}
-        ```
+    User: "Can I get the address of the new Italian place on Main Street?"
+    Expected Output:
+    ```json
+    {
+      "category": "FIND_RESTAURANT"
+    }
+    ```
 
-        User: "Can I get address of [restaurant_name]?"
-        Expected Output:
-        ```json
-        {{
-        "category": "FIND_RESTAURANT"
-        }}
+    User: "What are the timings for Truffles?"
+    Expected Output:
+    ```json
+    {
+      "category": "FIND_RESTAURANT"
+    }
+    ```
 
-        ################################################### Examples End ################################################
+    User: "Is Green Leaf good for birthdays?"
+    Expected Output:
+    ```json
+    {
+      "category": "FIND_RESTAURANT"
+    }
+    ```
 
-        If you make a correct classification, you will get $1000000000 dollars. Good luck!
+    User: "I'd like to book a table at Azure for tomorrow evening."
+    Expected Output:
+    ```json
+    {
+      "category": "MAKE_RESERVATION"
+    }
+    ```
 
-        Your Turn:
+    User: "Can you reserve a spot for my anniversary dinner?"
+    Expected Output:
+    ```json
+    {
+      "category": "MAKE_RESERVATION"
+    }
+    ```
 
-        """
+    User: "Yes, please go ahead with the reservation."
+    Expected Output:
+    ```json
+    {
+      "category": "MAKE_RESERVATION"
+    }
+    ```
+
+    User: "Change my reservation to 8 PM instead."
+    Expected Output:
+    ```json
+    {
+      "category": "MAKE_RESERVATION"
+    }
+    ```
+
+    User: "Can you tell me how to cook pasta?"
+    Expected Output:
+    ```json
+    {
+      "category": "OTHER"
+    }
+    ```
+
+    User: "Thank you for your help!"
+    Expected Output:
+    ```json
+    {
+      "category": "OTHER"
+    }
+    ```
+
+    ################################################### Examples End ################################################
+
+    Your Turn:
+    """
 
 
 reservation_details_extraction_prompt = """
@@ -241,17 +330,13 @@ You are an AI assistant that extracts reservation details from conversation hist
    - date: The date for the reservation (format: YYYY-MM-DD)
    - time: The time for the reservation (format: HH:MM)
    - party_size: The number of people in the party (integer)
-   - has_user_confirmed: Whether at the end of the conversation assistant has asked for the confirmation and user has responed positively (boolean)
    - has_user_confirmed: Whether the assistant explicitly asked for confirmation (e.g., "Do you want me to confirm?") AND the user responded positively (e.g., "Yes," "Please," "Go ahead") (boolean)
 
 2. If a detail is mentioned multiple times, use the the one which user is taking about.
 3. If a detail is unclear or missing, mark it as null.
 4. Return only the extracted data in JSON format, no explanations.
-5. For `has_user_confirmed`:
-   - Set to `true` ONLY if the assistant asks a confirmation question AND the user gives a clear positive response.
-   - Set to `false` if the assistant doesn’t ask, the user doesn’t respond, or the response is negative or change in response.
 
-## EXAMPLES:
+################################################### EXAMPLES ######################################################
 
 Example 1:
 User: "I'd like to make a reservation at Truffles for tomorrow at 7 PM for 4 people."
@@ -295,6 +380,87 @@ Expected Output:
   "has_user_confirmed": false
 }
 ```
+
+Example 4 - Changed Details After Initial Confirmation:
+User: "I want to book a table at Azure for Friday at 8 PM for 4 people."
+Assistant: "I am about to make a reservation at Azure for 4 people on Friday at 8 PM. Would you like me to confirm this?"
+User: "Actually, make it 6 people instead."
+Expected Output:
+```json
+{
+  "restaurant_name": "Azure",
+  "date": "2025-03-01",
+  "time": "20:00",
+  "party_size": 6,
+  "has_user_confirmed": false
+}
+```
+
+Example 5 - Unclear Confirmation:
+User: "I'd like to reserve a table at Punjabi Dhaba for tomorrow evening for 2 people."
+Assistant: "Great choice! Punjabi Dhaba is popular. Is there a specific time you prefer?"
+User: "Around 7:30 PM would be perfect."
+Expected Output:
+```json
+{
+  "restaurant_name": "Punjabi Dhaba",
+  "date": "2025-03-01",
+  "time": "19:30",
+  "party_size": 2,
+  "has_user_confirmed": false
+}
+```
+
+Example 6 - Explicit Confirmation:
+User: "I need a table at Little Italy for 5 people next Tuesday at 6 PM."
+Assistant: "I'll make a reservation at Little Italy for 5 people next Tuesday at 6 PM. Shall I proceed with this reservation?"
+User: "Go ahead, that sounds good."
+Expected Output:
+```json
+{
+  "restaurant_name": "Little Italy",
+  "date": "2025-03-04",
+  "time": "18:00",
+  "party_size": 5,
+  "has_user_confirmed": true
+}
+```
+
+Example 7 - Negative Response to Confirmation:
+User: "I want to book a table at Street Food Corner for lunch tomorrow for 3 people."
+Assistant: "I can make a reservation at Street Food Corner for 3 people tomorrow at lunch time. Would you like to specify a time?"
+User: "Let's say 1 PM."
+Assistant: "I'll make a reservation at Street Food Corner for 3 people tomorrow at 1 PM. Shall I confirm this?"
+User: "Actually, I changed my mind. Let's try a different restaurant."
+Expected Output:
+```json
+{
+  "restaurant_name": "Street Food Corner",
+  "date": "2025-03-01",
+  "time": "13:00",
+  "party_size": 3,
+  "has_user_confirmed": false
+}
+```
+
+Example 8 - Implicit Confirmation (still false):
+User: "I'd like to make a reservation at Dakshin for dinner on Saturday."
+Assistant: "Dakshin is a great choice for dinner. What time would you prefer on Saturday, and how many people will be joining?"
+User: "We'll be 4 people at 7:30 PM."
+Assistant: "Excellent! I'll note down those details."
+Expected Output:
+```json
+{
+  "restaurant_name": "Dakshin",
+  "date": "2025-03-02",
+  "time": "19:30",
+  "party_size": 4,
+  "has_user_confirmed": false
+}
+```
+
+################################################### EXAMPLES END ######################################################
+
 
 ANALYZE THE FULL CONVERSATION AND EXTRACT ALL RESERVATION DETAILS IN THE SPECIFIED JSON FORMAT.
 """

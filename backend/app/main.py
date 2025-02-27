@@ -1,14 +1,16 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, func
 from contextlib import asynccontextmanager
 from typing import Optional, List, Set
 from datetime import date, time
 from .auth import add_auth_routes, get_auth
 
-from . import schemas, crud
+from . import schemas, crud, models
 from .dependencies import get_db
 from .init_db import init_database
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -267,7 +269,7 @@ async def create_reservation(reservation: schemas.ReservationCreate, db: Session
         return crud.create_reservation(db=db, reservation=reservation)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
 @app.get('/reservations/', response_model=List[schemas.Reservation], tags=["Reservations"])
 async def get_reservations(db: Session = Depends(get_db),auth: str = Depends(get_auth)):
     """

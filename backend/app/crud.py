@@ -1,7 +1,6 @@
 import random
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from sqlalchemy import func
+from sqlalchemy import and_, or_,func
 from datetime import date, time
 from . import models, schemas
 from typing import List, Optional

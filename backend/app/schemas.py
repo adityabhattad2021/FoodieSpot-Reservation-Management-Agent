@@ -86,6 +86,21 @@ class ReservationBase(BaseModel):
     special_requests: Optional[str] = None
     status: ReservationStatus
 
+class SimpleReservationCreate(BaseModel):
+    """
+    Schema for creating a reservation with minimal information
+    """
+    restaurant_name: str
+    date: str  # Format: YYYY-MM-DD
+    time: str  # Format: HH:MM
+    party_size: int
+    user_id: str = "1"
+    special_requests: Optional[str] = None
+    has_user_confirmed: bool = True  # Assuming user confirmed if they submit
+
+    class Config:
+        from_attributes = True
+
 class ReservationCreate(ReservationBase):
     pass
 
@@ -102,3 +117,17 @@ class ReservationResponse(Reservation):
     customer: Customer
     table: Table
     restaurant: Restaurant
+
+class ReservationResponseSimple(BaseModel):
+    """
+    Schema for reservation response
+    """
+    reservation_id: int
+    restaurant_name: str
+    date: str
+    time: str
+    party_size: int
+    message: str
+
+    class Config:
+        from_attributes = True

@@ -167,7 +167,7 @@ def intent_classifier_prompt(available_intents: List[str]) -> str:
         }}
         ```
 
-        Few-shot examples:
+        Examples Responses:
 
         User: "I'm craving some Indian food."
         ```json
@@ -189,6 +189,13 @@ def intent_classifier_prompt(available_intents: List[str]) -> str:
         "category": "OTHER"
         }}
         ```
+
+        User: "Do you have contact details of [restaurant_name]??
+        ```json
+        {{
+        "category": "FIND_RESTAURANT"
+        }}
+        ```
         """
 
 
@@ -201,22 +208,30 @@ You are an AI assistant that extracts reservation details from conversation hist
    - date: The date for the reservation (format: YYYY-MM-DD)
    - time: The time for the reservation (format: HH:MM)
    - party_size: The number of people in the party (integer)
+   - has_user_confirmed: Whether at the end of the conversation assistant has asked for the confirmation and user has responed positively (boolean)
+   - has_user_confirmed: Whether the assistant explicitly asked for confirmation (e.g., "Do you want me to confirm?") AND the user responded positively (e.g., "Yes," "Please," "Go ahead") (boolean)
 
 2. If a detail is mentioned multiple times, use the the one which user is taking about.
 3. If a detail is unclear or missing, mark it as null.
 4. Return only the extracted data in JSON format, no explanations.
+5. For `has_user_confirmed`:
+   - Set to `true` ONLY if the assistant asks a confirmation question AND the user gives a clear positive response.
+   - Set to `false` if the assistant doesn’t ask, the user doesn’t respond, or the response is negative or change in response.
 
 ## EXAMPLES:
 
 Example 1:
 User: "I'd like to make a reservation at Truffles for tomorrow at 7 PM for 4 people."
+Bot: "Sure, I am about to make a reservation at Truffles for 4 people tomorrow at 7 PM, do you want me to confirm?"
+User: "Yes, please."
 Expected Output:
 ```json
 {
   "restaurant_name": "Truffles",
   "date": "2025-02-27",
   "time": "19:00",
-  "party_size": 4
+  "party_size": 4,
+  "has_user_confirmed": true
 }
 ```
 
@@ -230,7 +245,8 @@ Expected Output:
   "restaurant_name": "Green Leaf",
   "date": "2025-03-01",
   "time": "18:30",
-  "party_size": 2
+  "party_size": 2,
+  "has_user_confirmed": false
 }
 ```
 
@@ -242,7 +258,8 @@ Expected Output:
   "restaurant_name": null,
   "date": null,
   "time": null,
-  "party_size": null
+  "party_size": null,
+  "has_user_confirmed": false
 }
 ```
 
@@ -284,6 +301,11 @@ For party_size:
 - "How many guests should I include in the reservation?"
 - "Will anyone be joining you, or is this reservation just for yourself?"
 
+For has_user_confirmed:
+- "I am about to make a reservation at [restaurant] for [party_size] people on [date] at [time]. Would you like me to confirm this?"
+- "Shall I go ahead and confirm the reservation at [restaurant] for [party_size] people on [date] at [time]?"
+- "Are you ready to confirm the reservation at [restaurant] for [party_size] people on [date] at [time]?"
+
 ## EXAMPLE RESPONSES:
 
 missing_field restaurant_name:
@@ -297,6 +319,9 @@ missing_field time:
 
 missing_field party_size:
 "Almost done! How many people should I include in this reservation?"
+
+missing_field has_user_confirmed:
+"Everything is set for your reservation at [restaurant] for [party_size] people on [date] at [time]. Are you ready to confirm?"
 
 ## RESPONSE FORMAT:
 Provide ONLY the question for the next missing field - do not explain that information is missing or list what information you need. Keep it conversational as if you're having a natural dialogue.

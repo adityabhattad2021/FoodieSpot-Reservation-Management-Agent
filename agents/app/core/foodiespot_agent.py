@@ -26,7 +26,8 @@ class ReservationDetails(BaseModel):
     date: Optional[str] = None
     time: Optional[str] = None
     party_size: Optional[int] = None
-    user_id: Optional[str] = 'TODO'
+    has_user_confirmed: Optional[bool] = None
+    user_id: Optional[str] = '1'
 
     def missing_fields(self):
         """
@@ -35,15 +36,15 @@ class ReservationDetails(BaseModel):
 
         missing = []
         if not self.restaurant_name:
-            print("restanrant name is missing: ",self.restaurant_name)
             missing.append("restaurant_name")
         if not self.date:
-            print("date is missing")
             missing.append("date")
         if not self.time:
             missing.append("time")
         if not self.party_size:
             missing.append("party_size")
+        if not self.has_user_confirmed or self.has_user_confirmed == False:
+            missing.append("has_user_confirmed")
         return missing
 
 
@@ -89,8 +90,6 @@ class FindRestaurant:
     def __init__(self, llm_client):
         self.llm_client = llm_client
         self.system_prompt = find_restaurant_prompt
-
-        # We are maintaining a seperate conversation history for FindRestaurant because it has context information with the user query which is not needed for the main conversation history.
         self.coversation_history = [
             {"role":"system", "content":find_restaurant_prompt}
         ]
@@ -104,6 +103,9 @@ class FindRestaurant:
         return context
     
     def similarity_search_filter(self,conversation_history:List[Dict[str,str]]):
+        """
+        This function prompts the LLM to extract the keywords from the conversation history that describe the user's intent.
+        """
         try:
             messages = [
                 {"role": "system", "content": similarity_search_filter_prompt},
@@ -139,6 +141,7 @@ class MakeReservation:
 
     def __init__(self, llm_client):
         self.llm_client = llm_client
+
 
     def extract_reservation_details(self, coversation_history:List[Dict[str,str]], reservation_details:ReservationDetails):
         try:

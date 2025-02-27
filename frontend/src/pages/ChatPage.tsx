@@ -7,7 +7,7 @@ import { Header } from '../components/Header';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_CHAT_URL, 
-  timeout: 20000,
+  timeout: 30000,
 });
 
 export function ChatPage() {

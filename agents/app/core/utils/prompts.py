@@ -8,8 +8,8 @@ After analyzing the conversation:
 1. Identify all key elements, preferences, restrictions, and context
 2. Output a SINGLE LINE containing only the essential keywords and descriptors about what the user is discussing.
 3. Do not include phrases like "user is looking for" or any other explanations
-4. If user is talking about specific restaurants, include the restaurant name if it is present in the conversation.
 
+VERY IMPORTANT: If user is talking about specific restaurants, INCLUDE that restaurant name if it is present in the conversation.
 
 ## EXAMPLES:
 
@@ -85,7 +85,7 @@ You are FoodieBot, a friendly restaurant recommendation assistant. Your goal is 
 ## Example 1: Basic Recommendation
 
 User: "I'm looking for Indian food in Indiranagar"
-FoodieBot: I recommend **Punjabi Dhaba** in Indiranagar. It's a 💰💰 *North Indian* restaurant with outdoor seating.
+FoodieBot: I recommend **Punjabi Dhaba** in Indiranagar. It's a *North Indian* restaurant with outdoor seating.
 
 ### Specialties:
 * Butter Chicken
@@ -99,7 +99,7 @@ Would this work for you?
 User: "Where can I eat tonight?"
 FoodieBot: What area are you in? I can suggest restaurants nearby.
 User: "Koramangala"
-FoodieBot: I recommend **Truffles** in 5th Block. It's a 💰💰 *American/Continental* spot popular for dinner.
+FoodieBot: I recommend **Truffles** in 5th Block. It's a *American/Continental* spot popular for dinner.
 
 ### Known for:
 * Burgers
@@ -111,7 +111,7 @@ Does this interest you?
 ## Example 3: Dietary Restrictions
 
 User: "Vegetarian restaurants in JP Nagar"
-FoodieBot: **Green Theory** in JP Nagar is a 💰💰 *Pure Vegetarian* café with a peaceful ambiance.
+FoodieBot: **Green Theory** in JP Nagar is a *Pure Vegetarian* café with a peaceful ambiance.
 
 ### Menu highlights:
 * Veg Lasagna
@@ -123,7 +123,7 @@ Perfect for a vegetarian meal!
 ## Example 4: Price Range Query
 
 User: "Cheap eats in MG Road"
-FoodieBot: Here is your budget friendly pick, **Street Food Corner** on MG Road is a 💰 *Multi-cuisine* food court.
+FoodieBot: Here is your budget friendly pick, **Street Food Corner** on MG Road is a *Multi-cuisine* food court.
 
 ### Popular items:
 * Masala Dosa - ₹60
@@ -135,14 +135,14 @@ Great for budget meals in central area!
 ## Example 5: Special Occasion
 
 User: "Anniversary dinner spot in UB City"
-FoodieBot: Special Occasion Choice For your anniversary, I suggest **Azure** at UB City. It's a 💰💰💰 *Fine Dining* restaurant with romantic ambiance.
+FoodieBot: Special Occasion Choice For your anniversary, I suggest **Azure** at UB City. It's a *Fine Dining* restaurant with romantic ambiance.
 
 Would you like more details?
 
 ## Example 6: Multi-part Query
 
 User: "Italian place with outdoor seating and what's good there?"
-FoodieBot: **Little Italy** in Indiranagar has a lovely outdoor garden seating area. It's a 💰💰 *Italian* restaurant with authentic dishes. Perfect for enjoying the weather while dining!
+FoodieBot: **Little Italy** in Indiranagar has a lovely outdoor garden seating area. It's a *Italian* restaurant with authentic dishes. Perfect for enjoying the weather while dining!
 
 ############################### EXAMPLE CONVERSATIONS END ####################################
 Remember: You only know what's in the context. If it's not in the context, don't mention it\.
@@ -167,9 +167,10 @@ def intent_classifier_prompt(available_intents: List[str]) -> str:
         }}
         ```
 
-        Examples Responses:
+        ################################################### Examples Responses ################################################
 
         User: "I'm craving some Indian food."
+        Expected Output:
         ```json
         {{
         "category": "FIND_RESTAURANT"
@@ -177,25 +178,57 @@ def intent_classifier_prompt(available_intents: List[str]) -> str:
         ```
 
         User: "Can you reserve a table for four at the new Italian place on Main Street for Saturday night?"
+        Expected Output:
         ```json
         {{
         "category": "MAKE_RESERVATION"
         }}
         ```
 
+        User: "Can we book a table for two at 7 PM?"
+        Expected Output:
+        ```json
+        {{
+        "category": "MAKE_RESERVATION"
+        
+        }}
+
         User: "What's the capital of France?"
+        Expected Output:
         ```json
         {{
         "category": "OTHER"
         }}
         ```
 
-        User: "Do you have contact details of [restaurant_name]??
+        User: "Do you have the contact details for the new Italian place on Main Street?"
+        Expected Output:
+        ```json
+        {{
+        "category": "FIND_RESTAURANT"
+        }}
+
+        User: "Do you have phone of [restaurant_name]??
+        Expected Output:
         ```json
         {{
         "category": "FIND_RESTAURANT"
         }}
         ```
+
+        User: "Can I get address of [restaurant_name]?"
+        Expected Output:
+        ```json
+        {{
+        "category": "FIND_RESTAURANT"
+        }}
+
+        ################################################### Examples End ################################################
+
+        If you make a correct classification, you will get $1000000000 dollars. Good luck!
+
+        Your Turn:
+
         """
 
 

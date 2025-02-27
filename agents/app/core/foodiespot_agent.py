@@ -1,5 +1,4 @@
 import random
-import json
 from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
@@ -21,7 +20,6 @@ class ReservationDetails(BaseModel):
     """
     ReservationDetails stores the details of a reservation.
     """
-
     restaurant_name: Optional[str] = None
     date: Optional[str] = None
     time: Optional[str] = None

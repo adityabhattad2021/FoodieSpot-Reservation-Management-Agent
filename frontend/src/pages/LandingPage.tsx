@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, Utensils, Calendar, MessageCircle, Star, Users, Search } from 'lucide-react';
+import { ChefHat, Utensils, Calendar, MessageCircle } from 'lucide-react';
 import { Header } from '../components/Header';
 
 export function LandingPage() {

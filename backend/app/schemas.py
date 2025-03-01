@@ -1,25 +1,14 @@
 from pydantic import BaseModel, EmailStr
-from datetime import datetime, time, date
+from datetime import date, time
 from typing import Optional, List
-from .models import TableStatus, ReservationStatus, CuisineType, PriceRange, Ambiance
+from .models import ReservationStatus
 
+# Restaurant schemas
 class RestaurantBase(BaseModel):
-    name: str
-    address: str
-    phone: str
-    email: EmailStr
-    opening_time: time
-    closing_time: time
-    seating_capacity: int
-    special_event_space: bool = False
-    cuisine_type: CuisineType
-    price_range: PriceRange
-    ambiance: Ambiance
-    features: Optional[str] = None
-    description: Optional[str] = None
-    specialties: Optional[str] = None
-    dietary_options: Optional[str] = None
-    average_rating: Optional[float] = 0.0
+    restaurant_name: str
+    restaurant_description: Optional[str] = None
+    total_tables: Optional[int] = 0
+    booked_tables: Optional[int] = 0
 
 class RestaurantCreate(RestaurantBase):
     pass
@@ -30,104 +19,84 @@ class Restaurant(RestaurantBase):
     class Config:
         from_attributes = True
 
-class TableBase(BaseModel):
-    restaurant_id: int
-    table_number: int
-    seating_capacity: int
-    table_type: str
-    status: TableStatus
-
-class TableCreate(TableBase):
-    pass
-
-class Table(TableBase):
-    table_id: int
-
-    class Config:
-        from_attributes = True
-
-class CustomerBase(BaseModel):
+# User schemas
+class UserBase(BaseModel):
     name: str
-    phone: str
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
     email: Optional[EmailStr] = None
+    password: Optional[str] = None
 
-class CustomerCreate(CustomerBase):
-    pass
-
-class Customer(CustomerBase):
-    customer_id: int
-
-    class Config:
-        from_attributes = True
-
-class SupportTicketBase(BaseModel):
-    customer_id: int
-    ticket_date: date
-    ticket_time: time
-    ticket_description: str
-    status: bool
-
-class SupportTicketCreate(SupportTicketBase):
-    pass
-
-class SupportTicket(SupportTicketBase):
-    ticket_id: int
-
-    class Config:
-        from_attributes = True
-
-class ReservationBase(BaseModel):
-    customer_id: int
-    restaurant_id: int
-    table_id: int
-    reservation_date: date
-    reservation_time: time
-    number_of_guests: int
-    special_requests: Optional[str] = None
-    status: ReservationStatus
-
-class SimpleReservationCreate(BaseModel):
-    """
-    Schema for creating a reservation with minimal information
-    """
-    restaurant_name: str
-    date: str  # Format: YYYY-MM-DD
-    time: str  # Format: HH:MM
-    party_size: int
-    user_id: str = "1"
-    special_requests: Optional[str] = None
-    has_user_confirmed: bool = True  # Assuming user confirmed if they submit
-
-    class Config:
-        from_attributes = True
-
-class ReservationCreate(ReservationBase):
-    pass
-
-class Reservation(ReservationBase):
-    reservation_id: int
+class User(UserBase):
+    user_id: int
     
     class Config:
         from_attributes = True
 
-class RestaurantWithTables(Restaurant):
-    tables: List[Table] = []
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
-class ReservationResponse(Reservation):
-    customer: Customer
-    table: Table
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+    user_id: Optional[int] = None
+
+# Simplified Reservation schemas
+class ReservationBase(BaseModel):
+    restaurant_id: int
+    reservation_date: date
+    reservation_time: time
+    number_of_guests: int
+    special_requests: Optional[str] = None
+
+class ReservationCreate(ReservationBase):
+    pass
+
+class SimpleReservationCreate(BaseModel):
+    restaurant_name: str
+    date: str  # Format: YYYY-MM-DD
+    time: str  # Format: HH:MM
+    guests: int
+    special_requests: Optional[str] = None
+
+class ReservationUpdate(BaseModel):
+    reservation_date: Optional[date] = None
+    reservation_time: Optional[time] = None
+    number_of_guests: Optional[int] = None
+    special_requests: Optional[str] = None
+    status: Optional[ReservationStatus] = None
+
+class Reservation(ReservationBase):
+    reservation_id: int
+    user_id: int
+    status: ReservationStatus
+    
+    class Config:
+        from_attributes = True
+
+class ReservationWithRestaurant(Reservation):
     restaurant: Restaurant
+    
+    class Config:
+        from_attributes = True
 
-class ReservationResponseSimple(BaseModel):
-    """
-    Schema for reservation response
-    """
+class ReservationResponse(BaseModel):
     reservation_id: int
     restaurant_name: str
     date: str
     time: str
-    party_size: int
-    message: str
-
+    guests: int
+    status: str
+    message: str = "Reservation confirmed"
+    
     class Config:
         from_attributes = True

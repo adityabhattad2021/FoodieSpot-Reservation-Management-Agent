@@ -1,9 +1,10 @@
+import json
 import random
 from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from .utils.llm_client import LLMClient
-from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt, similarity_search_filter_prompt, reservation_details_extraction_prompt, missing_reservation_details_prompt
+from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt, similarity_search_filter_prompt, reservation_details_extraction_prompt, missing_reservation_details_prompt, handle_reservation_error_prompt
 from .vector_store import search_restaurants,format_search_results_for_llm
 
 class AgentState(Enum):
@@ -53,7 +54,6 @@ class AgentContext(BaseModel):
     current_state: AgentState
     user_intent: Optional[str] = None
     conversation_history: List[Dict[str,str]] = []
-    reservation_details: ReservationDetails = ReservationDetails()
 
 class IntentClassifier:
     """
@@ -132,9 +132,10 @@ class MakeReservation:
 
     def __init__(self, llm_client):
         self.llm_client = llm_client
+        self.reservation_complete:bool = False
+        self.reservation_details = ReservationDetails()
 
-
-    def extract_reservation_details(self, coversation_history:List[Dict[str,str]], reservation_details:ReservationDetails):
+    def extract_reservation_details(self, coversation_history:List[Dict[str,str]]):
         try:
             messages = [
                 {"role": "system", "content": reservation_details_extraction_prompt},
@@ -146,28 +147,122 @@ class MakeReservation:
             messages.append({"role":"user","content":conversation})
             response = self.llm_client.get_response(messages,is_json=True)
             for key in response:
-                if hasattr(reservation_details,key):
-                    setattr(reservation_details,key,response[key])
+                if hasattr(self.reservation_details,key):
+                    setattr(self.reservation_details,key,response[key])
         except Exception as e:
             print("Error in MakeReservation.extract_reservation_details():",e)
 
-    def make_reservation(self, reservation_details:ReservationDetails):
+    def make_reservation_ec(self,always_success) -> str:
         """
-            This will make the reservation and generate a random code that user can show at the restaurant.
+        Simulates a reservation attempt that randomly succeeds or fails with various error cases.
+        Returns a JSON string with the result that your AI agent can parse and handle.
+        EC - Edge Cases
         """
-        code = self.generate_reservation_code()
-        # Make a call to the backend.
-
-        return f"Your reservation at {reservation_details.restaurant_name} for {reservation_details.party_size} people on {reservation_details.date} at {reservation_details.time} has been confirmed. Please show this code at the restaurant: {code}"
-    
+        restaurant = self.reservation_details.restaurant_name
+        date = self.reservation_details.date
+        time = self.reservation_details.time
+        party_size = self.reservation_details.party_size
+        user_id = self.reservation_details.user_id
+        
+        response_types = [
+            # Success case (10% probability)
+            {"type": "success", "probability": 0.1},
+            
+            # Error cases (60% combined probability)
+            {"type": "restaurant_full", "probability": 0.2},
+            {"type": "restaurant_closed", "probability": 0.2},
+            {"type": "invalid_time", "probability": 0.2},
+            {"type": "large_party", "probability": 0.1},
+            {"type": "system_error", "probability": 0.1},
+            {"type": "holiday_policy", "probability": 0.1}
+        ]
+        
+        rand = random.random()
+        cumulative_prob = 0
+        chosen_type = "success"  
+        
+        for response in response_types:
+            cumulative_prob += response["probability"]
+            if rand <= cumulative_prob:
+                chosen_type = response["type"]
+                break
+        
+        if always_success:
+            chosen_type = "success"
+        
+        response_data = {
+            "status": "success" if chosen_type == "success" else "error",
+            "type": chosen_type,
+            "restaurant": restaurant,
+            "date": date,
+            "time": time,
+            "party_size": party_size,
+            "user_id": user_id
+        }
+        
+        if chosen_type == "success":
+            code = ''.join(random.choices('0123456789', k=6))
+            response_data.update({
+                "message": f"Your reservation at {restaurant} for {party_size} people on {date} at {time} has been confirmed.",
+                "reservation_code": code,
+            })
+        
+        elif chosen_type == "restaurant_full":
+            response_data.update({
+                "message": f"Sorry, {restaurant} is fully booked for {date} at {time}, can you try some other time?",
+                "error_code": "RESTAURANT_FULL",
+            })
+        
+        elif chosen_type == "restaurant_closed":
+            response_data.update({
+                "message": f"{restaurant} is closed on {date}.",
+                "error_code": "RESTAURANT_CLOSED",
+            })
+        
+        elif chosen_type == "invalid_time":
+            response_data.update({
+                "message": f"The requested time {time} is outside {restaurant}'s operating hours.",
+                "error_code": "INVALID_TIME",
+                "operating_hours": {
+                    "open": "11:00 AM",
+                    "close": "10:00 PM"
+                }
+            })
+        
+        elif chosen_type == "large_party":
+            response_data.update({
+                "message": f"For parties of {party_size} or more, {restaurant} requires a special reservation process. Please call the restaurant directly.",
+                "error_code": "LARGE_PARTY",
+                "max_regular_party_size": party_size - 1,
+                "contact_phone": "555-123-4567"
+            })
+        
+        elif chosen_type == "system_error":
+            response_data.update({
+                "message": "A system error occurred while processing your reservation.",
+                "error_code": "SYSTEM_ERROR",
+                "retry_after": 60 
+            })
+        
+        elif chosen_type == "holiday_policy":
+            response_data.update({
+                "message": f"Since your reservation is on {date}, which is a holiday, {restaurant} requires a deposit.",
+                "error_code": "HOLIDAY_POLICY",
+                "deposit_required": True,
+                "deposit_amount": 25 * party_size,
+                "deposit_currency": "USD"
+            })
+        
+        return json.dumps(response_data)
+         
     def generate_reservation_code(self):
         return ''.join(random.choices('0123456789', k=6))
 
-    def handle_messages(self, coversation_history:List[Dict[str,str]], reservation_details:ReservationDetails):
+    def handle_messages(self, coversation_history:List[Dict[str,str]]):
         try:
-            self.extract_reservation_details(coversation_history,reservation_details)
-            print(reservation_details)
-            missing_fields = reservation_details.missing_fields()
+            self.extract_reservation_details(coversation_history)
+            print(self.reservation_details)
+            missing_fields = self.reservation_details.missing_fields()
             if len(missing_fields) != 0:
                 first_field = missing_fields[0]
                 system_prompt = missing_reservation_details_prompt + f"Missing field: {first_field}"
@@ -178,8 +273,20 @@ class MakeReservation:
                 response = self.llm_client.get_response(messages,is_json=False)
                 return response
             else:
-                response = self.make_reservation(reservation_details)
-                return response
+                response = self.make_reservation_ec(always_success=True)
+                response = json.loads(response)
+                if response["status"] == "success":
+                    self.reservation_complete = True
+                    self.reservation_details = ReservationDetails()
+                    return f"{response['message']} Please show this code at the counter: {response['reservation_code']}."
+                else:
+                    messages = [
+                        {"role": "system", "content": handle_reservation_error_prompt},
+                        {"role": "user", "content": json.dumps(response) },
+                    ]
+                    response = self.llm_client.get_response(messages,is_json=False)
+                    return response
+
         except Exception as e:
             print("Error in MakeReservation.handle_messages():",e)
             return "I'm sorry, I'm having trouble understanding you right now. Please try again."        
@@ -207,7 +314,7 @@ class FoodieSpotAgent:
                 return {"message": response}
 
             elif self.context.current_state == AgentState.MAKE_RESERVATION:
-                response = self.make_reservation.handle_messages(self.context.conversation_history,self.context.reservation_details)
+                response = self.make_reservation.handle_messages(self.context.conversation_history)
                 self.context.conversation_history.append({"role": "assistant", "content": response})
                 return {"message": response}
 

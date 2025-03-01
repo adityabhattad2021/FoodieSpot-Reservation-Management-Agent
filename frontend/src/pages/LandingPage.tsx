@@ -77,7 +77,7 @@ export function LandingPage() {
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 h-[70px]">
                     {feature.description}
                   </p>
                 </div>
@@ -129,7 +129,7 @@ export function LandingPage() {
           </div>
           <div className="mt-8 pt-8 border-t border-gray-800">
             <p className="text-center text-gray-400">
-              © 2024 FoodieSpot. All rights reserved.
+              © 2025 FoodieSpot. All rights reserved.
             </p>
           </div>
         </div>

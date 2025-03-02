@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (config) => {
       const token = localStorage.getItem('token'); 
       if (token) {
-        // set the header with the token
         config.headers.Authorization = `Bearer ${token}`;
       }
       return config;

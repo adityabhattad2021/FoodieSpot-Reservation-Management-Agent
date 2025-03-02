@@ -180,13 +180,19 @@ async def delete_restaurant(
 @app.post("/reservations/", response_model=schemas.Reservation)
 async def create_reservation(
     reservation: schemas.ReservationCreate,
-    current_user: models.User = Depends(get_current_user),
+    auth: models.User = Depends(get_api_key_or_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Create a new reservation for the current user.
     """
-    result = crud.create_reservation(db=db, reservation=reservation, user_id=current_user.user_id)
+    if isinstance(auth,models.User):
+        current_user_id = auth.user_id
+    else:
+        if reservation.user_id is None:
+            raise HTTPException(status_code=400, detail="User ID is required")
+        current_user_id = reservation.user_id
+    result = crud.create_reservation(db=db, reservation=reservation, user_id=current_user_id)
     if not result:
         raise HTTPException(status_code=400, detail="No tables available at the requested time")
     return result
@@ -194,13 +200,19 @@ async def create_reservation(
 @app.post("/book-restaurant/", response_model=schemas.ReservationResponse)
 async def book_restaurant_by_name(
     reservation: schemas.SimpleReservationCreate,
-    current_user: models.User = Depends(get_current_user),
+    auth: models.User = Depends(get_api_key_or_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Book a restaurant by name with simplified reservation details.
     """
-    result = crud.create_reservation_by_restaurant_name(db=db, reservation=reservation, user_id=current_user.user_id)
+    if isinstance(auth,models.User):
+        current_user_id = auth.user_id
+    else:
+        if reservation.user_id is None:
+            raise HTTPException(status_code=400, detail="User ID is required")
+        current_user_id = reservation.user_id
+    result = crud.create_reservation_by_restaurant_name(db=db, reservation=reservation, user_id=current_user_id)
     if not result:
         raise HTTPException(status_code=404, detail="Restaurant not found or no tables available at the requested time")
     
@@ -229,14 +241,20 @@ async def get_my_reservations(
 async def update_my_reservation(
     reservation_id: int,
     reservation_update: schemas.ReservationUpdate,
-    current_user: models.User = Depends(get_current_user),
+    auth: models.User = Depends(get_api_key_or_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Update a specific reservation for the current user.
     """
+    if isinstance(auth,models.User):
+        current_user_id = auth.user_id
+    else:
+        if reservation_update.user_id is None:
+            raise HTTPException(status_code=400, detail="User ID is required")
+        current_user_id = reservation_update.user_id
     updated_reservation = crud.update_reservation(
-        db, reservation_id, reservation_update, current_user.user_id
+        db, reservation_id, reservation_update, current_user_id
     )
     if updated_reservation is None:
         raise HTTPException(status_code=404, detail="Reservation not found, not owned by you, or requested time is not available")

@@ -77,8 +77,6 @@ def get_available_tables_count(db: Session, restaurant_id: int, reservation_date
                 # Reservation ends during our time window
                 and_(
                     models.Reservation.reservation_time < reservation_time,
-                    # Use a simpler approach without time_add
-                    # Assuming all reservations are 1.5 hours long
                     # We'll consider any reservation that starts up to 1.5 hours before our time
                     models.Reservation.reservation_time >= (datetime.combine(date.today(), reservation_time) - timedelta(hours=1, minutes=30)).time()
                 )
@@ -186,7 +184,6 @@ def create_reservation_by_restaurant_name(db: Session, reservation: schemas.Simp
         reservation_date=reservation_date,
         reservation_time=reservation_time,
         number_of_guests=reservation.guests,
-        special_requests=reservation.special_requests,
         status=models.ReservationStatus.CONFIRMED
     )
     db.add(db_reservation)

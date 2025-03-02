@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Edit, Save, Calendar, Clock } from 'lucide-react';
+import { User, Edit, Save, Calendar, Clock, Code } from 'lucide-react';
 import { api } from '../context/AuthContext';
 import { Header } from '../components/Header';
 
@@ -13,8 +13,8 @@ interface Reservation {
   reservation_date: string;
   reservation_time: string;
   number_of_guests: number;
-  special_requests?: string;
   status: string;
+  reservation_code:string;
 }
 
 export function ProfilePage() {
@@ -24,11 +24,13 @@ export function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [aiPreferences, setAiPreferences] = useState('');
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    ai_preferences: '',
   });
 
   async function loadUserData(api: any) { 
@@ -36,10 +38,13 @@ export function ProfilePage() {
       setIsLoading(true);
       // Fetch user profile
       const userData = await fetchUserProfile();
-    setFormData({
-        name: userData.name,
-        email: userData.email,
-    });
+      setFormData({
+          name: userData.name,
+          email: userData.email,
+          ai_preferences: userData.ai_preferences,
+      });
+
+      setAiPreferences(userData.ai_preferences);
 
       // Fetch user reservations
       const reservationsResponse = await api.get('/my-reservations/');
@@ -52,16 +57,15 @@ export function ProfilePage() {
     }
   }
 
-    useEffect(() => {
-        loadUserData(api);
-    }, [api]);
+  useEffect(() => {
+      loadUserData(api);
+  }, [api]);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
-
   }, [isAuthenticated, navigate, fetchUserProfile]);
 
   const handleEdit = () => {
@@ -84,11 +88,11 @@ export function ProfilePage() {
       }, 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError('Failed to update profile. Please try again.');
+      setError('Failed to update profile. Please try again later.');
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
@@ -217,6 +221,10 @@ export function ProfilePage() {
                       <p className="text-sm text-gray-500">Email</p>
                       <p className="text-gray-800">{user?.email}</p>
                     </div>
+                    <div>
+                      <p className="text-sm text-gray-500">AI Preferences</p>
+                      <p className="text-gray-800">{aiPreferences || 'No preferences set'}</p>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSave} className="space-y-4">
@@ -238,6 +246,17 @@ export function ProfilePage() {
                         value={formData.email}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">AI Preferences</label>
+                      <textarea
+                        name="ai_preferences"
+                        value={formData.ai_preferences}
+                        onChange={handleChange}
+                        placeholder="Tell us about your food preferences, dietary restrictions, etc."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        rows={3}
                       />
                     </div>
                     <div className="pt-2">
@@ -304,12 +323,13 @@ export function ProfilePage() {
                               <User className="h-4 w-4 mr-1" />
                               {reservation.number_of_guests} {reservation.number_of_guests === 1 ? 'guest' : 'guests'}
                             </div>
+                            {reservation.reservation_code && (
+                              <div className="flex items-center text-sm text-gray-500">
+                                <Code className="h-4 w-4 mr-1" />
+                                Code: {reservation.reservation_code}
+                              </div>
+                            )}
                           </div>
-                          {reservation.special_requests && (
-                            <p className="mt-2 text-sm text-gray-600 italic">
-                              "{reservation.special_requests}"
-                            </p>
-                          )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <span

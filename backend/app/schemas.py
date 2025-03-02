@@ -31,9 +31,11 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+    ai_preferences: Optional[str] = None
 
 class User(UserBase):
     user_id: int
+    ai_preferences: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -56,29 +58,29 @@ class ReservationBase(BaseModel):
     reservation_date: date
     reservation_time: time
     number_of_guests: int
-    special_requests: Optional[str] = None
 
 class ReservationCreate(ReservationBase):
-    pass
+    user_id: Optional[int] = None
 
 class SimpleReservationCreate(BaseModel):
+    user_id: Optional[int] = None
     restaurant_name: str
     date: str  # Format: YYYY-MM-DD
     time: str  # Format: HH:MM
     guests: int
-    special_requests: Optional[str] = None
 
 class ReservationUpdate(BaseModel):
+    user_id: Optional[int] = None
     reservation_date: Optional[date] = None
     reservation_time: Optional[time] = None
     number_of_guests: Optional[int] = None
-    special_requests: Optional[str] = None
     status: Optional[ReservationStatus] = None
 
 class Reservation(ReservationBase):
     reservation_id: int
     user_id: int
     status: ReservationStatus
+    reservation_code: str
     
     class Config:
         from_attributes = True
@@ -96,6 +98,7 @@ class ReservationResponse(BaseModel):
     time: str
     guests: int
     status: str
+    reservation_code: str
     message: str = "Reservation confirmed"
     
     class Config:

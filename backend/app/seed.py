@@ -48,7 +48,8 @@ def seed_data():
         user = User(
             name="Aditya Bhattad",
             email="aditya.bhattad@example.com",
-            password=get_password_hash("password123") 
+            password=get_password_hash("password123") ,
+            ai_preferences="I prefer vegetarian options."
         )
         db.add(user)
         db.commit()
@@ -74,7 +75,6 @@ def seed_data():
                 reservation_date=reservation_date,
                 reservation_time=reservation_time,
                 number_of_guests=random.randint(2, 6),
-                special_requests=random.choice([None, "Window seat", "Birthday celebration", "Quiet corner"]),
                 status=ReservationStatus.CONFIRMED
             )
             

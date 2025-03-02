@@ -60,9 +60,6 @@ The system consists of three main components:
 │   │   │   ├── __init__.py
 │   │   │   ├── foodiespot_agent.py  # Main agent logic
 │   │   │   ├── restaurants.json     # Sample restaurant data, already loaded in Pinecone
-│   │   │   ├── tools/                # Work in progress (not used in current state)
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── reservation_management.py
 │   │   │   ├── utils/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── api_client.py
@@ -134,7 +131,7 @@ Before you begin, ensure you have:
    ```
    ```
    # For development mode (hot-reload)
-   make start
+   make start-dev
    ```
 
 

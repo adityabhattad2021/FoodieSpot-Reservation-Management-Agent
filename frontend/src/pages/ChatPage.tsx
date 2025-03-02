@@ -4,6 +4,7 @@ import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from '../types';
 import { Header } from '../components/Header';
+import { useAuth } from '../context/AuthContext';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_CHAT_URL, 
@@ -16,6 +17,7 @@ export function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const { user } = useAuth();
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   console.log("API Base URL:", import.meta.env.VITE_CHAT_URL);
@@ -78,7 +80,8 @@ export function ChatPage() {
     try {
       const response = await api.post('/chat/', {
         message: input,
-        session_id: sessionId
+        session_id: sessionId,
+        user_id: user?.user_id // Assuming user object has an id property
       });
       
       if(response.data.detail === "Invalid session ID"){

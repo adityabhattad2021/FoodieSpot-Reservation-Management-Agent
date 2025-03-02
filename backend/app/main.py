@@ -72,6 +72,32 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
     """
     return current_user
 
+@app.get("/users/{user_id}", response_model=schemas.User)
+async def read_user(user_id: int, db: Session = Depends(get_db),auth: str = Depends(get_api_key_or_current_user)):
+    """
+    Get user information by user ID.
+    """
+    if isinstance(auth, models.User):
+        raise HTTPException(status_code=403, detail="API key required for this operation")
+
+    db_user = crud.get_user(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
+
+@app.get("/users/{user_id}/reservations", response_model=List[schemas.Reservation])
+async def read_user_reservations(user_id: int, db: Session = Depends(get_db),auth: str = Depends(get_api_key_or_current_user)):
+    """
+    Get all reservations for a specific user by user ID.
+    """
+    if isinstance(auth, models.User):
+        raise HTTPException(status_code=403, detail="API key required for this operation")
+
+    db_user = crud.get_user(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return crud.get_user_reservations(db, user_id=user_id)
+
 @app.put("/users/me", response_model=schemas.User)
 async def update_user_me(
     user_update: schemas.UserUpdate,
@@ -214,13 +240,14 @@ async def book_restaurant_by_name(
         current_user_id = reservation.user_id
     result = crud.create_reservation_by_restaurant_name(db=db, reservation=reservation, user_id=current_user_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Restaurant not found or no tables available at the requested time")
+        raise HTTPException(status_code=404, detail="No tables available at the requested time.")
     
     db_reservation, restaurant = result
     
     return schemas.ReservationResponse(
         reservation_id=db_reservation.reservation_id,
         restaurant_name=restaurant.restaurant_name,
+        reservation_code=db_reservation.reservation_code,
         date=reservation.date,
         time=reservation.time,
         guests=reservation.guests,

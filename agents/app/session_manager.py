@@ -1,8 +1,22 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Optional
-from .schemas import Session, Message
+from typing import Dict, Optional, List
+from .schemas import Message, User
 
+class Session:
+    def __init__(self,id:str,messages):
+        self.id = id
+        self.messages: List[Message] = messages
+        self.last_activity: datetime = datetime.now(timezone.utc)
+        self.user_data: Optional[User] = None
+
+    def set_user_data(self, user_data: User):
+        self.user_data = user_data
+        self.last_activity = datetime.now(timezone.utc)
+
+    def add_message(self, role: str, content: str):
+        self.messages.append(Message(role=role, content=content))
+        self.last_activity =  datetime.now(timezone.utc)
 
 class SessionManager:
     def __init__(self, session_timeout: int = 3600):
@@ -44,9 +58,7 @@ class SessionManager:
         if not session:
             session = self.create_session()
             self._sessions[session_id] = session
-        
-        session.messages.append(Message(role=role, content=str(content)))
-        session.last_activity = datetime.now(timezone.utc) 
+        session.add_message(role, content)
         return session.id 
 
     def delete_session(self, session_id: str) -> None:

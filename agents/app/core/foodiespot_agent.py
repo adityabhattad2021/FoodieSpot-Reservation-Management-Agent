@@ -3,6 +3,8 @@ import random
 from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+from ..schemas import User,IntentClassificationResponse, ReservationDetailsExtractorResponse
+from .utils.api_client import APIClient
 from .utils.llm_client import LLMClient
 from .utils.prompts import find_restaurant_prompt, intent_classifier_prompt, similarity_search_filter_prompt, reservation_details_extraction_prompt, missing_reservation_details_prompt, handle_reservation_error_prompt
 from .vector_store import search_restaurants,format_search_results_for_llm
@@ -17,16 +19,20 @@ class AgentState(Enum):
     # level x
     OTHER = "other"
 
-class ReservationDetails(BaseModel):
+class ReservationDetails():
     """
     ReservationDetails stores the details of a reservation.
     """
-    restaurant_name: Optional[str] = None
-    date: Optional[str] = None
-    time: Optional[str] = None
-    party_size: Optional[int] = None
-    has_user_confirmed: Optional[bool] = None
-    user_id: Optional[str] = '1'
+    def __init__(self):
+        self.restaurant_name: Optional[str] = None
+        self.date: Optional[str] = None
+        self.time: Optional[str] = None
+        self.party_size: Optional[int] = None
+        self.has_user_confirmed: Optional[bool] = None
+        self.user_id: Optional[int] = None
+
+    def set_user_id(self, user_id:int):
+        self.user_id = user_id
 
     def missing_fields(self):
         """
@@ -34,18 +40,17 @@ class ReservationDetails(BaseModel):
         """
 
         missing = []
-        if not self.restaurant_name:
+        if not self.restaurant_name or self.restaurant_name == "null":
             missing.append("restaurant_name")
-        if not self.date:
+        if not self.date or self.date == "null":
             missing.append("date")
-        if not self.time:
+        if not self.time or self.time == "null":
             missing.append("time")
-        if not self.party_size:
+        if not self.party_size or self.party_size == "null":
             missing.append("party_size")
-        if not self.has_user_confirmed or self.has_user_confirmed == False:
+        if not self.has_user_confirmed or self.has_user_confirmed == False or self.has_user_confirmed == "null":
             missing.append("has_user_confirmed")
         return missing
-
 
 class AgentContext(BaseModel):
     """
@@ -68,7 +73,7 @@ class IntentClassifier:
                 {"role": "system", "content": intent_classifier_prompt},
                 *conversation_history
             ]
-            response = self.llm_client.get_response(messages)
+            response = self.llm_client.get_response(messages,perf=False,response_schema=IntentClassificationResponse)
             return response.get("category","OTHER")
         except Exception as e:
             print("Error in IntentClassifier.classify_intent():",e)
@@ -130,8 +135,9 @@ class FindRestaurant:
 
 class MakeReservation:
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client,api_client):
         self.llm_client = llm_client
+        self.api_client = api_client
         self.reservation_complete:bool = False
         self.reservation_details = ReservationDetails()
 
@@ -145,127 +151,43 @@ class MakeReservation:
                 conversation += f"{message['role']}: {message['content']}\n"
             conversation += "Based on the conversation, please extract the reservation details."
             messages.append({"role":"user","content":conversation})
-            response = self.llm_client.get_response(messages,is_json=True)
+            response = self.llm_client.get_response(messages,is_json=True,perf=True,response_schema=ReservationDetailsExtractorResponse)
             for key in response:
                 if hasattr(self.reservation_details,key):
                     setattr(self.reservation_details,key,response[key])
         except Exception as e:
             print("Error in MakeReservation.extract_reservation_details():",e)
 
-    def make_reservation_ec(self,always_success) -> str:
-        """
-        Simulates a reservation attempt that randomly succeeds or fails with various error cases.
-        Returns a JSON string with the result that your AI agent can parse and handle.
-        EC - Edge Cases
-        """
-        restaurant = self.reservation_details.restaurant_name
-        date = self.reservation_details.date
-        time = self.reservation_details.time
-        party_size = self.reservation_details.party_size
-        user_id = self.reservation_details.user_id
-        
-        response_types = [
-            # Success case (10% probability)
-            {"type": "success", "probability": 0.1},
-            
-            # Error cases (60% combined probability)
-            {"type": "restaurant_full", "probability": 0.2},
-            {"type": "restaurant_closed", "probability": 0.2},
-            {"type": "invalid_time", "probability": 0.2},
-            {"type": "large_party", "probability": 0.1},
-            {"type": "system_error", "probability": 0.1},
-            {"type": "holiday_policy", "probability": 0.1}
-        ]
-        
-        rand = random.random()
-        cumulative_prob = 0
-        chosen_type = "success"  
-        
-        for response in response_types:
-            cumulative_prob += response["probability"]
-            if rand <= cumulative_prob:
-                chosen_type = response["type"]
-                break
-        
-        if always_success:
-            chosen_type = "success"
-        
-        response_data = {
-            "status": "success" if chosen_type == "success" else "error",
-            "type": chosen_type,
-            "restaurant": restaurant,
-            "date": date,
-            "time": time,
-            "party_size": party_size,
-            "user_id": user_id
-        }
-        
-        if chosen_type == "success":
-            code = ''.join(random.choices('0123456789', k=6))
-            response_data.update({
-                "message": f"Your reservation at {restaurant} for {party_size} people on {date} at {time} has been confirmed.",
-                "reservation_code": code,
-            })
-        
-        elif chosen_type == "restaurant_full":
-            response_data.update({
-                "message": f"Sorry, {restaurant} is fully booked for {date} at {time}, can you try some other time?",
-                "error_code": "RESTAURANT_FULL",
-            })
-        
-        elif chosen_type == "restaurant_closed":
-            response_data.update({
-                "message": f"{restaurant} is closed on {date}.",
-                "error_code": "RESTAURANT_CLOSED",
-            })
-        
-        elif chosen_type == "invalid_time":
-            response_data.update({
-                "message": f"The requested time {time} is outside {restaurant}'s operating hours.",
-                "error_code": "INVALID_TIME",
-                "operating_hours": {
-                    "open": "11:00 AM",
-                    "close": "10:00 PM"
-                }
-            })
-        
-        elif chosen_type == "large_party":
-            response_data.update({
-                "message": f"For parties of {party_size} or more, {restaurant} requires a special reservation process. Please call the restaurant directly.",
-                "error_code": "LARGE_PARTY",
-                "max_regular_party_size": party_size - 1,
-                "contact_phone": "555-123-4567"
-            })
-        
-        elif chosen_type == "system_error":
-            response_data.update({
-                "message": "A system error occurred while processing your reservation.",
-                "error_code": "SYSTEM_ERROR",
-                "retry_after": 60 
-            })
-        
-        elif chosen_type == "holiday_policy":
-            response_data.update({
-                "message": f"Since your reservation is on {date}, which is a holiday, {restaurant} requires a deposit.",
-                "error_code": "HOLIDAY_POLICY",
-                "deposit_required": True,
-                "deposit_amount": 25 * party_size,
-                "deposit_currency": "USD"
-            })
-        
-        return json.dumps(response_data)
-         
-    def generate_reservation_code(self):
-        return ''.join(random.choices('0123456789', k=6))
+    async def make_reservation(self) -> Dict[str, Any]:
+        try:
+            reservation_data = {
+                "restaurant_name": self.reservation_details.restaurant_name,
+                "date": self.reservation_details.date,
+                "time": self.reservation_details.time,
+                "guests": self.reservation_details.party_size,
+                "user_id": self.reservation_details.user_id
+            }
+            response = await self.api_client.make_reservation(reservation_data)
+            return response
+        except Exception as e:
+            print("Error in MakeReservation.make_reservation():",e)
+            return {
+                "status": "error",
+                "message": f"Failed to make reservation: {str(e)}",
+                "error_code": "SYSTEM_ERROR"
+            }
 
-    def handle_messages(self, coversation_history:List[Dict[str,str]]):
+    async def handle_messages(self, coversation_history:List[Dict[str,str]]):
         try:
             self.extract_reservation_details(coversation_history)
             print(self.reservation_details)
             missing_fields = self.reservation_details.missing_fields()
+            missing_fields = sorted(missing_fields, key=lambda x: ["restaurant_name", "date", "time", "party_size","has_user_confirmed"].index(x))
+
             if len(missing_fields) != 0:
                 first_field = missing_fields[0]
-                system_prompt = missing_reservation_details_prompt + f"Missing field: {first_field}"
+                print("first_field",first_field,missing_fields)
+                system_prompt = missing_reservation_details_prompt + f"\n\nMISSING FIELD: {first_field}"
                 messages = [
                     {"role": "system", "content": system_prompt },
                     *coversation_history
@@ -273,8 +195,7 @@ class MakeReservation:
                 response = self.llm_client.get_response(messages,is_json=False)
                 return response
             else:
-                response = self.make_reservation_ec(always_success=True)
-                response = json.loads(response)
+                response = await self.make_reservation()
                 if response["status"] == "success":
                     self.reservation_complete = True
                     self.reservation_details = ReservationDetails()
@@ -294,17 +215,18 @@ class MakeReservation:
 class FoodieSpotAgent:
     def __init__(self):
         self.llm_client = LLMClient()
+        self.api_client = APIClient()
         self.context = AgentContext(current_state=AgentState.GREETING)
 
         self.intent_classifier = IntentClassifier(self.llm_client)
         self.find_restaurant = FindRestaurant(self.llm_client)
-        self.make_reservation = MakeReservation(self.llm_client)
+        self.make_reservation = MakeReservation(self.llm_client,self.api_client)
 
-    async def run(self, user_input: str) -> Dict[str, Any]:
+    async def run(self, user_input: str,user_data:User) -> Dict[str, Any]:
         try:
             self.context.conversation_history.append({"role":"user", "content":user_input})
 
-            # Classify the user intent for all the messages
+            # Classifying the user intent for all the messages
             self.context.user_intent = self.intent_classifier.classify_intent(self.context.conversation_history)
             self.context.current_state = self.get_next_state(self.context.user_intent)
 
@@ -314,7 +236,13 @@ class FoodieSpotAgent:
                 return {"message": response}
 
             elif self.context.current_state == AgentState.MAKE_RESERVATION:
-                response = self.make_reservation.handle_messages(self.context.conversation_history)
+                if isinstance(user_data, dict):
+                    user_id = user_data.get('user_id')
+                else:
+                    user_id = getattr(user_data, 'user_id', None)
+                if self.make_reservation.reservation_details.user_id is None and user_id is not None:
+                    self.make_reservation.reservation_details.set_user_id(user_id)
+                response = await self.make_reservation.handle_messages(self.context.conversation_history)
                 self.context.conversation_history.append({"role": "assistant", "content": response})
                 return {"message": response}
 

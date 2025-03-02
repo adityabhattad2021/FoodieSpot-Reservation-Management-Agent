@@ -1,4 +1,3 @@
-from typing import List
 import datetime
 
 similarity_search_filter_prompt = """
@@ -298,7 +297,7 @@ intent_classifier_prompt =  """
       "category": "MAKE_RESERVATION"
     }
     ```
-
+    
     User: "Can you tell me how to cook pasta?"
     Expected Output:
     ```json
@@ -321,8 +320,10 @@ intent_classifier_prompt =  """
     """
 
 
-reservation_details_extraction_prompt = """
+reservation_details_extraction_prompt = f"""
 You are an AI assistant that extracts reservation details from conversation history. Your task is to identify and extract key reservation information.
+
+Today's date is {datetime.datetime.now().strftime("%Y-%m-%d")}.
 
 ## EXTRACTION RULES:
 1. Extract ONLY the following details:
@@ -344,13 +345,13 @@ Bot: "Sure, I am about to make a reservation at Truffles for 4 people tomorrow a
 User: "Yes, please."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Truffles",
   "date": "2025-02-27",
   "time": "19:00",
   "party_size": 4,
   "has_user_confirmed": true
-}
+}}
 ```
 
 Example 2:
@@ -359,26 +360,26 @@ Assistant: "Sure, when would you like to make the reservation and for how many p
 User: "This Friday at 6:30 PM for 2 people."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Green Leaf",
   "date": "2025-03-01",
   "time": "18:30",
   "party_size": 2,
   "has_user_confirmed": false
-}
+}}
 ```
 
 Example 3:
 User: "I want to reserve a table."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": null,
   "date": null,
   "time": null,
   "party_size": null,
   "has_user_confirmed": false
-}
+}}
 ```
 
 Example 4 - Changed Details After Initial Confirmation:
@@ -387,13 +388,13 @@ Assistant: "I am about to make a reservation at Azure for 4 people on Friday at 
 User: "Actually, make it 6 people instead."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Azure",
   "date": "2025-03-01",
   "time": "20:00",
   "party_size": 6,
   "has_user_confirmed": false
-}
+}}
 ```
 
 Example 5 - Unclear Confirmation:
@@ -402,13 +403,13 @@ Assistant: "Great choice! Punjabi Dhaba is popular. Is there a specific time you
 User: "Around 7:30 PM would be perfect."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Punjabi Dhaba",
   "date": "2025-03-01",
   "time": "19:30",
   "party_size": 2,
   "has_user_confirmed": false
-}
+}}
 ```
 
 Example 6 - Explicit Confirmation:
@@ -417,13 +418,13 @@ Assistant: "I'll make a reservation at Little Italy for 5 people next Tuesday at
 User: "Go ahead, that sounds good."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Little Italy",
   "date": "2025-03-04",
   "time": "18:00",
   "party_size": 5,
   "has_user_confirmed": true
-}
+}}
 ```
 
 Example 7 - Negative Response to Confirmation:
@@ -434,13 +435,13 @@ Assistant: "I'll make a reservation at Street Food Corner for 3 people tomorrow 
 User: "Actually, I changed my mind. Let's try a different restaurant."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Street Food Corner",
   "date": "2025-03-01",
   "time": "13:00",
   "party_size": 3,
   "has_user_confirmed": false
-}
+}}
 ```
 
 Example 8 - Implicit Confirmation (still false):
@@ -450,13 +451,13 @@ User: "We'll be 4 people at 7:30 PM."
 Assistant: "Excellent! I'll note down those details."
 Expected Output:
 ```json
-{
+{{
   "restaurant_name": "Dakshin",
   "date": "2025-03-02",
   "time": "19:30",
   "party_size": 4,
   "has_user_confirmed": false
-}
+}}
 ```
 
 ################################################### EXAMPLES END ######################################################
@@ -469,14 +470,11 @@ ANALYZE THE FULL CONVERSATION AND EXTRACT ALL RESERVATION DETAILS IN THE SPECIFI
 missing_reservation_details_prompt = f"""
 You are an AI assistant that helps users complete their restaurant reservations. Your task is to ask for missing information in a conversational, friendly manner.
 
-Today's date is {datetime.datetime.now().strftime("%Y-%m-%d")}.
-
 ## CORE RULES:
-1. Ask ONLY for the missing details provided as the "missing_fields".
+1. Ask ONLY for the missing details provided as the "MISSING FIELD".
 2. Ask for ONE piece of information at a time, starting with the highest priority
 3. Be conversational and natural, not robotic
-4. Provide helpful context or suggestions where appropriate
-5. Keep questions concise - no more than 1-2 sentences
+4. Keep questions concise - no more than 1-2 sentences
 
 ## QUESTION FORMATS:
 
@@ -492,8 +490,7 @@ For date:
 
 For time:
 - "What time would work best for your reservation?"
-- "Would you prefer lunch or dinner time?"
-- If they mentioned a meal: "What time would you like to have [lunch/dinner]?"
+- "Can I know your preferred time for the reservation?"
 
 For party_size:
 - "How many people will be in your party?"
@@ -505,25 +502,29 @@ For has_user_confirmed:
 - "Shall I go ahead and confirm the reservation at [restaurant] for [party_size] people on [date] at [time]?"
 - "Are you ready to confirm the reservation at [restaurant] for [party_size] people on [date] at [time]?"
 
-## EXAMPLE RESPONSES:
+###################################################################### EXAMPLE RESPONSES ######################################################################
 
-missing_field restaurant_name:
-"I'd be happy to help with your reservation. Which restaurant would you like to dine at?"
+MISSING FIELD: restaurant_name
+Expected Output: "I'd be happy to help with your reservation. Which restaurant would you like to dine at?"
 
-missing_field date:
-"Great choice with [restaurant]! When would you like to make this reservation?"
+MISSING FIELD: date
+Expected Output: "Great choice with BBQ Nation! When would you like to make this reservation?"
 
-missing_field time:
-"Perfect! And what time would you prefer for your reservation at [restaurant] on [date]?"
+MISSING FIELD: time
+Expected Output: "Perfect! And what time would you prefer for your reservation at Dragon House on 25th march?"
 
-missing_field party_size:
-"Almost done! How many people should I include in this reservation?"
+MISSING FIELD: party_size
+Expected Output: "Almost done! How many people should I include in this reservation?"
 
-missing_field has_user_confirmed:
-"Everything is set for your reservation at [restaurant] for [party_size] people on [date] at [time]. Are you ready to confirm?"
+MISSING FIELD: has_user_confirmed
+Expected Output: "Everything is set for your reservation at [restaurant] for [party_size] people on [date] at [time]. Are you ready to confirm?"
+
+###################################################################### EXAMPLE END ######################################################################
 
 ## RESPONSE FORMAT:
 Provide ONLY the question for the next missing field - do not explain that information is missing or list what information you need. Keep it conversational as if you're having a natural dialogue.
+
+Your Turn:
 """
 
 

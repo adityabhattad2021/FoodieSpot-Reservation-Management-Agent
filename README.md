@@ -106,6 +106,7 @@ Before you begin, ensure you have:
 - Docker and Docker Compose installed
 - Groq API key
 - Pinecone API key
+- Google API key
 
 ### Local Development Setup
 
@@ -129,11 +130,11 @@ Before you begin, ensure you have:
 3. **Launch Services**
    ```bash
    # Start all services
-   docker-compose up --build
+   make start
    ```
    ```
    # For development mode (hot-reload)
-   docker-compose -f docker-compose.dev.yml up --build
+   make start
    ```
 
 
@@ -144,7 +145,12 @@ Before you begin, ensure you have:
 
 5. **Shutdown**
    ```bash
-   docker-compose down -v
+   Ctrl + C
+   ```
+
+6. **Cleanup**
+   ```bash
+   make clean
    ```
 
 ## Prompt Engineering Techniques

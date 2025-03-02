@@ -11,23 +11,83 @@ def seed_data():
         restaurant_data = [
             {
                 "name": "Taj Mahal",
-                "description": "Authentic North Indian cuisine in a luxurious setting with royal Mughal ambiance",
+                "description": "Authentic North Indian cuisine in a luxurious setting with royal Mughal ambiance"
             },
             {
                 "name": "Punjab Grill",
-                "description": "Authentic Punjabi cuisine with traditional charm",
+                "description": "Authentic Punjabi cuisine with traditional charm"
             },
             {
                 "name": "Dakshin Flavors",
-                "description": "Traditional South Indian cuisine served with authentic flavors",
+                "description": "Traditional South Indian cuisine served with authentic flavors"
             },
             {
                 "name": "Dragon House",
-                "description": "Premium Chinese dining experience with modern Asian decor",
+                "description": "Premium Chinese dining experience with modern Asian decor"
             },
             {
                 "name": "Bella Italia",
-                "description": "Authentic Italian cuisine with imported ingredients",
+                "description": "Authentic Italian cuisine with imported ingredients"
+            },
+            {
+                "name": "Kerala Kitchen",
+                "description": "Authentic Kerala cuisine with coastal flavors"
+            },
+            {
+                "name": "Hyderabad House",
+                "description": "Famous for authentic Hyderabadi cuisine"
+            },
+            {
+                "name": "Bengal Bay",
+                "description": "Traditional Bengali cuisine with home-style cooking"
+            },
+            {
+                "name": "Gujarati Thali",
+                "description": "Unlimited Gujarati thali restaurant"
+            },
+            {
+                "name": "Thai Orchid",
+                "description": "Authentic Thai cuisine in elegant setting"
+            },
+            {
+                "name": "Sushi Square",
+                "description": "Premium Japanese dining experience"
+            },
+            {
+                "name": "Mediterranean Blue",
+                "description": "Mediterranean cuisine with fresh ingredients"
+            },
+            {
+                "name": "Mughlai Darbar",
+                "description": "Royal Mughlai cuisine experience"
+            },
+            {
+                "name": "Continental Corner",
+                "description": "Classic Continental cuisine with modern twist"
+            },
+            {
+                "name": "Mexican Cantina",
+                "description": "Vibrant Mexican restaurant with authentic flavors"
+            },
+            {
+                "name": "Seoul Kitchen",
+                "description": "Authentic Korean BBQ and traditional dishes"
+            },
+            {
+                "name": "Vietnam House",
+                "description": "Fresh Vietnamese cuisine with authentic flavors"
+            },
+            {
+                "name": "Maharaja Kitchen",
+                "description": "Royal Rajasthani dining experience with desert ambiance"
+            },
+            {
+                "name": "Dim Sum Dynasty",
+                "description": "Specializing in handcrafted dim sum and Cantonese cuisine"
+            },
+            {
+                "name": "BBQ Nation",
+                "description": "Interactive BBQ dining experience"
             }
         ]
 
@@ -55,37 +115,6 @@ def seed_data():
         db.commit()
         
         print(f"Created user: {user.name} with ID: {user.user_id}")
-        
-        # Create reservations for the user
-        today = date.today()
-        
-        # Make 5 reservations for different dates and restaurants
-        for i in range(5):
-            reservation_date = today + timedelta(days=i+1)
-            restaurant = random.choice(restaurants)
-            
-            # Random time between 6 PM and 9 PM
-            hour = random.randint(18, 21)
-            minute = random.choice([0, 15, 30, 45])
-            reservation_time = time(hour, minute)
-            
-            reservation = Reservation(
-                user_id=user.user_id,
-                restaurant_id=restaurant.restaurant_id,
-                reservation_date=reservation_date,
-                reservation_time=reservation_time,
-                number_of_guests=random.randint(2, 6),
-                status=ReservationStatus.CONFIRMED
-            )
-            
-            db.add(reservation)
-            
-            # Update booked tables count
-            restaurant.booked_tables += 1
-            
-            print(f"Created reservation at {restaurant.restaurant_name} on {reservation_date} at {reservation_time}")
-        
-        db.commit()
         print("Seed data created successfully!")
 
     except Exception as e:

@@ -5,7 +5,7 @@ from .schemas import ChatRequest, ChatResponse, GetConversationHistoryResponse
 from .session_manager import SessionManager
 from .core.foodiespot_agent import FoodieSpotAgent
 from .core.vector_store import init_vector_index
-
+from .core.utils.api_client import APIClient
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +30,7 @@ app.add_middleware(
 
 agent = FoodieSpotAgent()
 session_manager = SessionManager(session_timeout=3600) 
+api_client = APIClient()
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(request: ChatRequest) -> ChatResponse:
@@ -39,9 +40,16 @@ async def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=400, detail="Invalid session ID")
 
     session_manager.add_message(session_id, "user", request.message)
+
+    user_data = None
+    if request.user_id:
+        session = session_manager.get_session(session_id)
+        if not hasattr(session,'user_data') or not session.user_data:
+            user_data = await api_client.get_user_details(request.user_id)
+            if "error" not in user_data:
+                session.user_data = user_data
     
-    result = await agent.run(request.message)
-    print(result)
+    result = await agent.run(request.message,session.user_data)
     response = result["message"]
     
     session_manager.add_message(session_id, "assistant", response)

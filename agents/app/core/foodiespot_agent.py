@@ -38,7 +38,6 @@ class ReservationDetails():
         """
         Returns a list of missing fields in the reservation details.
         """
-
         missing = []
         if not self.restaurant_name or self.restaurant_name == "null":
             missing.append("restaurant_name")
@@ -187,7 +186,7 @@ class MakeReservation:
             if len(missing_fields) != 0:
                 first_field = missing_fields[0]
                 print("first_field",first_field,missing_fields)
-                system_prompt = missing_reservation_details_prompt + f"\n\nMISSING FIELD: {first_field}"
+                system_prompt = missing_reservation_details_prompt + f"\n\nMISSING FIELD -> {first_field}"
                 messages = [
                     {"role": "system", "content": system_prompt },
                     *coversation_history

@@ -89,7 +89,7 @@ The system consists of three main components:
 │   ├── src/
 │   │   ├── components/    # Reusable components
 │   │   ├── pages/         # Application pages
-│   │   └── context/       # Auth Context for admin dashboard
+│   │   └── context/       # Auth Context 
 ├── docker-compose.yml      # Production Docker Compose
 └── docker-compose.dev.yml  # Development Docker Compose with hot-reload
 

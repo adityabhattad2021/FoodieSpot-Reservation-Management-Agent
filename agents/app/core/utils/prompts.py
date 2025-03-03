@@ -8,14 +8,18 @@ After analyzing the conversation:
 2. Output a SINGLE LINE containing only the essential keywords and descriptors about what the user is discussing.
 3. Do not include phrases like "user is looking for" or any other explanations
 
-VERY IMPORTANT: If user is talking about specific restaurants, INCLUDE that restaurant name if it is present in the conversation.
+1. VERY IMPORTANT: If user is talking about specific restaurants, INCLUDE that restaurant name if it is present in the conversation.
+2. Only include the keywords that the user is talking about in the last message.
 
-###################################################### EXAMPLES #######################################################:
+###################################################### EXAMPLES #######################################################
 
 Example 1
 - User: "I want to find a good Indian restaurant in the city."
+- Output: "good Indian restaurant, city"
+- User adds: "No, forget Indian I would like to try something continental this time."
+- Output: "Here are few of the options: **Truffles** in Koramangala, and **Green Leaf** in Whitefield."
 
-Expected Output: "good Indian restaurant, city"
+Expected Output: "continental restaurant"
 
 Example 2
 - User: "I need a place for a family dinner with vegetarian options."
@@ -63,6 +67,7 @@ Example 8
 - User: "Great! And do they take reservations for large groups?"
 
 Expected Output: "Little Italy, private dining, large groups, reservations"
+
 
 ###################################################### EXAMPLES END #######################################################:
 
@@ -472,27 +477,26 @@ You are an AI assistant that helps users complete their restaurant reservations.
 
 ## CORE RULES:
 1. Ask ONLY for the missing details provided as the "MISSING FIELD".
-2. Ask for ONE piece of information at a time, starting with the highest priority
-3. Be conversational and natural, not robotic
-4. Keep questions concise - no more than 1-2 sentences
+2. Be conversational and natural, not robotic
+3. Keep questions concise - no more than 1-2 sentences
 
-## QUESTION FORMATS:
+########################################################### EXAMPLE QUESTION FORMATS ################################################################
 
-For restaurant_name:
+For MISSING FIELD -> restaurant_name:
 - "Which restaurant would you like to make a reservation at?"
 - "Could you tell me which restaurant you'd like to dine at?"
 - If they've been discussing restaurants: "Would you like to make a reservation at [previously mentioned restaurant]?"
 
-For date:
+For MISSING FIELD -> date:
 - "When would you like to make this reservation?"
 - "What day were you thinking of dining?"
 - For near-term dates: "Would you like to book for today, tomorrow, or another day?"
 
-For time:
+For MISSING FIELD -> time:
 - "What time would work best for your reservation?"
 - "Can I know your preferred time for the reservation?"
 
-For party_size:
+For MISSING FIELD -> party_size:
 - "How many people will be in your party?"
 - "How many guests should I include in the reservation?"
 - "Will anyone be joining you, or is this reservation just for yourself?"
@@ -501,23 +505,6 @@ For has_user_confirmed:
 - "I am about to make a reservation at [restaurant] for [party_size] people on [date] at [time]. Would you like me to confirm this?"
 - "Shall I go ahead and confirm the reservation at [restaurant] for [party_size] people on [date] at [time]?"
 - "Are you ready to confirm the reservation at [restaurant] for [party_size] people on [date] at [time]?"
-
-###################################################################### EXAMPLE RESPONSES ######################################################################
-
-MISSING FIELD: restaurant_name
-Expected Output: "I'd be happy to help with your reservation. Which restaurant would you like to dine at?"
-
-MISSING FIELD: date
-Expected Output: "Great choice with BBQ Nation! When would you like to make this reservation?"
-
-MISSING FIELD: time
-Expected Output: "Perfect! And what time would you prefer for your reservation at Dragon House on 25th march?"
-
-MISSING FIELD: party_size
-Expected Output: "Almost done! How many people should I include in this reservation?"
-
-MISSING FIELD: has_user_confirmed
-Expected Output: "Everything is set for your reservation at [restaurant] for [party_size] people on [date] at [time]. Are you ready to confirm?"
 
 ###################################################################### EXAMPLE END ######################################################################
 
